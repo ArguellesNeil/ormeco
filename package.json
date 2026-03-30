@@ -1,0 +1,10 @@
+{
+    "name": "ormeco",
+    "private": true,
+    "scripts": {
+        "start": "npx kill-port 4000 5173 && concurrently -n \"BACKEND,FRONTEND\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\""
+    },
+    "devDependencies": {
+        "concurrently": "^9.0.0"
+    }
+}
