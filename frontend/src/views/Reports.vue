@@ -1546,16 +1546,16 @@ onMounted(loadReport);
 }
 
 :global(html.ormeco-dark) .reports-page {
-  --rp-bg-soft: #1a2738;
+  --rp-bg-soft: #0f1d31;
   --rp-line: #33506f;
   --rp-line-strong: #4a6b91;
   --rp-text-soft: #a6bed8;
-  --rp-table-head-bg: #1d2d40;
-  --rp-table-head-text: #b8cde4;
+  --rp-table-head-bg: #13263d;
+  --rp-table-head-text: #c9dcef;
   --rp-table-text: #e9f3ff;
-  --rp-table-row-odd: #172536;
-  --rp-table-row-even: #1b2b3f;
-  --rp-table-row-hover: #22364d;
+  --rp-table-row-odd: #122337;
+  --rp-table-row-even: #0f1d31;
+  --rp-table-row-hover: #16273d;
 }
 
 :global(html.ormeco-dark) .reports-page .report-badge {
@@ -1565,7 +1565,7 @@ onMounted(loadReport);
 }
 
 :global(html.ormeco-dark) .reports-page .period-switch {
-  background: linear-gradient(180deg, #1b2a3c, #162334);
+  background: #0f1d31;
 }
 
 :global(html.ormeco-dark) .reports-page .period-switch .btn.active {
@@ -1580,7 +1580,7 @@ onMounted(loadReport);
 :global(html.ormeco-dark) .reports-page .status-card,
 :global(html.ormeco-dark) .reports-page .glass-card,
 :global(html.ormeco-dark) .reports-page .chart-legend {
-  background: #1a2738;
+  background: #0f1d31;
   border-color: #33506f;
 }
 
@@ -1610,14 +1610,14 @@ onMounted(loadReport);
 :global(html.ormeco-dark) .reports-page .legend-item,
 :global(html.ormeco-dark) .reports-page .benefit-item,
 :global(html.ormeco-dark) .reports-page .pie-center {
-  background: #1b2b3f;
+  background: #0f1d31;
   border-color: #33506f;
 }
 
 :global(html.ormeco-dark) .reports-page .legend-item:hover,
 :global(html.ormeco-dark) .reports-page .legend-item.active,
 :global(html.ormeco-dark) .reports-page .benefit-item:hover {
-  background: #22364d;
+  background: #16273d;
   border-color: #4a6b91;
 }
 

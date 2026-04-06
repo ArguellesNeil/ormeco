@@ -1106,15 +1106,13 @@ onMounted(load);
 :global(html.ormeco-dark) .seminar-page .calendar-card,
 :global(html.ormeco-dark) .seminar-page .table-card,
 :global(html.ormeco-dark) .seminar-page .summary-grid {
-  background: #1a2738;
+  background: #0f1d31;
   border-color: #33506f;
 }
 
 :global(html.ormeco-dark) .seminar-page .calendar-head {
   border-color: #36516f;
-  background:
-    linear-gradient(160deg, #1d2f44, #1a2b40 55%, #1d2f43),
-    radial-gradient(circle at 8% 10%, rgba(104, 157, 214, 0.22), transparent 42%);
+  background: #0f1d31;
 }
 
 :global(html.ormeco-dark) .seminar-page .monitor-label,
@@ -1146,15 +1144,12 @@ onMounted(load);
 
 :global(html.ormeco-dark) .seminar-page .calendar-mini-stat {
   border-color: #3c5a79;
-  background: #1f334a;
+  background: #122337;
 }
 
 :global(html.ormeco-dark) .seminar-page .calendar-day {
   border-color: #2d435d;
-  background:
-    linear-gradient(160deg, rgba(31, 45, 64, 0.92), rgba(29, 45, 64, 0.96)),
-    radial-gradient(circle at top right, rgba(93, 132, 176, 0.18), transparent 52%),
-    #1d2d40;
+  background: #0f1d31;
 }
 
 :global(html.ormeco-dark) .seminar-page .calendar-day:hover {
@@ -1164,13 +1159,11 @@ onMounted(load);
 
 :global(html.ormeco-dark) .seminar-page .calendar-day.is-outside {
   opacity: 0.65;
-  background: #172637;
+  background: #0c1828;
 }
 
 :global(html.ormeco-dark) .seminar-page .calendar-day.has-approved {
-  background:
-    linear-gradient(145deg, rgba(28, 54, 66, 0.95), rgba(29, 45, 64, 0.98)),
-    radial-gradient(circle at top right, rgba(79, 192, 146, calc(var(--approved-alpha, 0.2) * 0.35)), transparent 56%);
+  background: #122337;
 }
 
 :global(html.ormeco-dark) .seminar-page .calendar-approved-count {
@@ -1183,16 +1176,16 @@ onMounted(load);
 
 :global(html.ormeco-dark) .seminar-page .legend-chip {
   border-color: #355170;
-  background: #203247;
+  background: #122337;
   color: #d3e6fb;
 }
 
 :global(html.ormeco-dark) .seminar-page .legend-chip.level-none {
-  background: #1f2f42;
+  background: #0f1d31;
 }
 
 :global(html.ormeco-dark) .seminar-page .seminar-table thead {
-  background: #1d2d40;
+  background: #13263d;
 }
 
 :global(html.ormeco-dark) .seminar-page .seminar-table th {
@@ -1207,7 +1200,7 @@ onMounted(load);
 }
 
 :global(html.ormeco-dark) .seminar-page .date-highlight {
-  background: #22354b;
+  background: #16273d;
 }
 
 :global(html.ormeco-dark) .seminar-page .state-card.error {

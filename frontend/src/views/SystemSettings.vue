@@ -1063,18 +1063,28 @@ onMounted(loadAll);
 
 .audit-toolbar {
   display: grid;
-  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  grid-template-columns: repeat(6, minmax(140px, 1fr));
   gap: 10px;
+  align-items: end;
 }
 
 .audit-toolbar .field.search {
   grid-column: span 2;
+  min-width: 0;
 }
 
 .audit-toolbar-actions {
+  grid-column: 5 / -1;
   display: flex;
   align-items: flex-end;
+  justify-content: flex-end;
   gap: 8px;
+}
+
+.audit-toolbar-actions .btn {
+  min-height: 44px;
+  min-width: 124px;
+  white-space: nowrap;
 }
 
 .audit-table-wrap {
@@ -1183,6 +1193,9 @@ onMounted(loadAll);
 }
 
 .actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   white-space: nowrap;
 }
 
@@ -1242,19 +1255,44 @@ onMounted(loadAll);
 }
 
 .btn-link {
-  border: none;
-  background: transparent;
-  color: var(--accent);
+  border: 1px solid #dce5ef;
+  border-radius: 11px;
+  background: #ffffff;
+  color: #10233e;
   font-weight: 800;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 7px 12px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  line-height: 1;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+}
+
+.btn-link:hover {
+  background: #eef6ff;
+  border-color: #ccddf0;
+}
+
+.btn-link:active {
+  transform: translateY(1px);
+}
+
+.btn-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #1f7dd6 22%, transparent 78%);
 }
 
 .btn-link.danger {
+  border-color: #dce5ef;
+  background: #ffffff;
   color: var(--danger);
+}
+
+.btn-link.danger:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
 }
 
 .action-icon {
@@ -1319,6 +1357,20 @@ onMounted(loadAll);
   }
 }
 
+@media (max-width: 1200px) {
+  .audit-toolbar {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+
+  .audit-toolbar .field.search {
+    grid-column: span 2;
+  }
+
+  .audit-toolbar-actions {
+    grid-column: span 2;
+  }
+}
+
 @media (max-width: 900px) {
   .settings-page {
     padding: 16px;
@@ -1353,7 +1405,13 @@ onMounted(loadAll);
   }
 
   .audit-toolbar-actions {
-    justify-content: flex-start;
+    grid-column: span 1;
+    justify-content: stretch;
+  }
+
+  .audit-toolbar-actions .btn {
+    flex: 1;
+    min-width: 0;
   }
 
   .audit-action,

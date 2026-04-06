@@ -1521,13 +1521,13 @@ onMounted(async () => {
 }
 
 :global(html.ormeco-dark) .dashboard {
-  --bg: #111b2a;
-  --surface: #1a2738;
+  --bg: #0a1524;
+  --surface: #0b1626;
   --text: #e9f3ff;
   --muted: #a6bed8;
-  --border: #30445d;
-  --border-2: #3a5676;
-  --soft: #213146;
+  --border: #2c425c;
+  --border-2: #3a5572;
+  --soft: #102033;
 
   --success-bg: rgba(73, 202, 143, 0.16);
   --success-bd: rgba(73, 202, 143, 0.34);
@@ -1554,15 +1554,12 @@ onMounted(async () => {
 }
 
 :global(html.ormeco-dark) .dashboard::after {
-  background: rgba(92, 129, 188, 0.36);
+  background: rgba(92, 129, 188, 0.08);
 }
 
 :global(html.ormeco-dark) .hero-strip {
   border-color: #33506f;
-  background:
-    radial-gradient(circle at 20% 0%, rgba(41, 201, 163, 0.16), transparent 45%),
-    radial-gradient(circle at 100% 100%, rgba(91, 129, 191, 0.2), transparent 42%),
-    #1a2a3b;
+  background: #0f1d31;
 }
 
 :global(html.ormeco-dark) .hero-kicker {
@@ -1602,20 +1599,18 @@ onMounted(async () => {
 :global(html.ormeco-dark) .hero-pill {
   color: #bdeedd;
   border-color: #385576;
-  background: rgba(26, 39, 56, 0.86);
+  background: rgba(15, 29, 49, 0.96);
 }
 
 :global(html.ormeco-dark) .hero-pill:hover {
   border-color: rgba(41, 201, 163, 0.52);
-  background: rgba(41, 201, 163, 0.12);
+  background: rgba(22, 38, 60, 0.96);
 }
 
 :global(html.ormeco-dark) .pulse-card,
 :global(html.ormeco-dark) .quick-metrics,
 :global(html.ormeco-dark) .status-monitor-card {
-  background:
-    radial-gradient(circle at 100% 0%, rgba(86, 196, 173, 0.14), transparent 42%),
-    linear-gradient(220deg, rgba(26, 39, 56, 0.98), rgba(21, 33, 48, 0.98));
+  background: #0f1d31;
 }
 
 :global(html.ormeco-dark) .chart-shell,
@@ -1625,27 +1620,27 @@ onMounted(async () => {
 :global(html.ormeco-dark) .status-monitor-block,
 :global(html.ormeco-dark) .status-monitor-block li {
   border-color: #33506f;
-  background: #1b2b3f;
+  background: #0f1d31;
 }
 
 :global(html.ormeco-dark) .legend-item:hover,
 :global(html.ormeco-dark) .legend-item.active,
 :global(html.ormeco-dark) .quick-item:hover {
   border-color: #4c7199;
-  background: #22364d;
+  background: #16273d;
 }
 
 :global(html.ormeco-dark) .chart-shell::after {
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.6);
 }
 
 :global(html.ormeco-dark) .chart-ring::after {
-  background: #152435;
+  background: #0f1d31;
   border-color: #355174;
 }
 
 :global(html.ormeco-dark) .chart-center {
-  background: rgba(20, 31, 45, 0.84);
+  background: #0f1d31;
 }
 
 :global(html.ormeco-dark) .chart-center p,
@@ -1664,13 +1659,13 @@ onMounted(async () => {
 
 :global(html.ormeco-dark) .table tbody tr:hover,
 :global(html.ormeco-dark) .announcement-item:hover {
-  background: #22354c;
+  background: #16273d;
 }
 
 :global(html.ormeco-dark) .announcement-item,
 :global(html.ormeco-dark) .empty-state,
 :global(html.ormeco-dark) .table-wrapper {
-  background: #1a2738;
+  background: #0f1d31;
   border-color: #33506f;
 }
 
@@ -1678,7 +1673,7 @@ onMounted(async () => {
 :global(html.ormeco-dark) .card-icon,
 :global(html.ormeco-dark) .kpi-icon,
 :global(html.ormeco-dark) .kpi-trend {
-  background: #22344a;
+  background: #122337;
   border-color: #36516f;
 }
 

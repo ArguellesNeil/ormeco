@@ -374,12 +374,12 @@ h6 {
 }
 
 html.ormeco-dark {
-    --bg: #111b2a;
-    --surface: #1a2738;
-    --surface-soft: #213146;
-    --surface-muted: #1f2d40;
-    --line: #30445d;
-    --line-strong: #3a5676;
+    --bg: #0a1524;
+    --surface: #0b1626;
+    --surface-soft: #0f1d31;
+    --surface-muted: #0e1b2c;
+    --line: #2c425c;
+    --line-strong: #3a5572;
     --text: #e9f3ff;
     --text-muted: #a6bed8;
     --primary: #29c9a3;
@@ -395,15 +395,15 @@ html.ormeco-dark {
 
 html.ormeco-dark body {
     color: var(--text);
-    background: radial-gradient(circle at 18% -12%, rgba(41, 201, 163, 0.18) 0%, transparent 33%), radial-gradient(circle at 92% 2%, rgba(91, 129, 191, 0.2) 0%, transparent 28%), var(--bg);
+    background: var(--bg);
 }
 
 html.ormeco-dark body::before {
-    background: rgba(43, 185, 154, 0.4);
+    background: rgba(43, 185, 154, 0.08);
 }
 
 html.ormeco-dark body::after {
-    background: rgba(93, 132, 192, 0.34);
+    background: rgba(93, 132, 192, 0.08);
 }
 
 html.ormeco-dark *::-webkit-scrollbar-track {
@@ -420,7 +420,7 @@ html.ormeco-dark *::-webkit-scrollbar-thumb:hover {
 }
 
 html.ormeco-dark .topbar {
-    background: rgba(19, 30, 45, 0.88);
+    background: #0b1626;
     color: var(--text);
     border-bottom-color: var(--line);
 }
@@ -442,25 +442,25 @@ html.ormeco-dark .topbar .status-badge {
 
 html.ormeco-dark .topbar .user-info,
 html.ormeco-dark .topbar .logout-btn {
-    background: #18273a;
+    background: #0f1d31;
     border-color: var(--line);
     color: var(--text);
 }
 
 html.ormeco-dark .topbar .logout-btn:hover {
-    background: #223349;
+    background: #16263c;
     border-color: var(--line-strong);
 }
 
 html.ormeco-dark .sidebar {
-    background: linear-gradient(180deg, #152233 0%, #121d2c 100%);
+    background: linear-gradient(180deg, #0c1828 0%, #0a1524 100%);
     border-right-color: var(--line);
     box-shadow: 6px 0 28px rgba(1, 5, 14, 0.44);
 }
 
 html.ormeco-dark .sidebar .brand,
 html.ormeco-dark .sidebar .sidebar-footer {
-    background: #1a2b3d;
+    background: #0f1d31;
     border-color: var(--line);
 }
 
@@ -475,7 +475,7 @@ html.ormeco-dark .sidebar .brand-sub {
 }
 
 html.ormeco-dark .sidebar .nav-link:hover {
-    background: #24374d;
+    background: #172538;
     border-color: var(--line-strong);
 }
 
@@ -513,42 +513,42 @@ html.ormeco-dark .select,
 html.ormeco-dark input,
 html.ormeco-dark textarea,
 html.ormeco-dark select {
-    background: #182638;
+    background: #142436;
     color: var(--text);
     border-color: var(--line);
 }
 
 html.ormeco-dark input::placeholder,
 html.ormeco-dark textarea::placeholder {
-    color: #8ca6c2;
+    color: #90aac5;
 }
 
 html.ormeco-dark .data-table thead {
-    background: #1d2d40;
-    color: #d6e8fb;
+    background: #13263d;
+    color: #c9dcef;
 }
 
 html.ormeco-dark .data-table tbody,
 html.ormeco-dark .table-row:nth-child(even) {
-    background: #182638;
+    background: #0f1d31;
 }
 
 html.ormeco-dark .table-row {
-    border-bottom-color: #2b4158;
+    border-bottom-color: #28405a;
 }
 
 html.ormeco-dark .table-row:hover {
-    background: #21334a;
+    background: #16273d;
 }
 
 html.ormeco-dark .btn-secondary {
-    background: #1a2a3b;
+    background: #0f1d31;
     color: var(--text);
     border-color: var(--line);
 }
 
 html.ormeco-dark .btn-secondary:hover {
-    background: #21344a;
+    background: #16263c;
     border-color: var(--line-strong);
 }
 
@@ -560,12 +560,12 @@ html.ormeco-dark .btn-link {
 
 html.ormeco-dark .btn-edit,
 html.ormeco-dark .btn-delete {
-    background: #1a2a3c;
+    background: #0f1d31;
     border-color: var(--line);
 }
 
 html.ormeco-dark .btn-edit:hover {
-    background: #21344b;
+    background: #16263c;
 }
 
 html.ormeco-dark .btn-delete {
@@ -583,7 +583,7 @@ html.ormeco-dark .modal-overlay {
 }
 
 html.ormeco-dark .login-page {
-    background: radial-gradient(circle at 22% 18%, rgba(41, 201, 163, 0.24) 0%, transparent 42%), radial-gradient(circle at 100% 0%, rgba(95, 131, 194, 0.26) 0%, transparent 34%), #0f1826;
+    background: #0a1524;
 }
 
 html.ormeco-dark .login-brand-panel h1,
@@ -597,7 +597,7 @@ html.ormeco-dark .login-subtitle {
 }
 
 html.ormeco-dark .login-card {
-    background: rgba(24, 39, 57, 0.9);
+    background: #0f1d31;
     border-color: var(--line);
     box-shadow: 0 24px 50px rgba(3, 8, 18, 0.54);
 }
@@ -630,7 +630,7 @@ html.ormeco-dark .announcement-meta,
 html.ormeco-dark .status-name,
 html.ormeco-dark .date-cell,
 html.ormeco-dark .legend-label {
-    color: var(--text-muted) !important;
+    color: #afc5dd !important;
 }
 
 html.ormeco-dark .announcement-body,
@@ -644,7 +644,7 @@ html.ormeco-dark .quick-value {
 /* Fail-safe dark overrides for page-scoped styles */
 
 html.ormeco-dark .dashboard {
-    background: #111b2a !important;
+    background: #0a1524 !important;
 }
 
 html.ormeco-dark .dashboard .card,
@@ -657,8 +657,8 @@ html.ormeco-dark .dashboard .quick-item,
 html.ormeco-dark .dashboard .chart-shell,
 html.ormeco-dark .dashboard .insight-legend,
 html.ormeco-dark .dashboard .legend-item {
-    background: #1a2738 !important;
-    border-color: #33506f !important;
+    background: #0f1d31 !important;
+    border-color: #34516f !important;
 }
 
 html.ormeco-dark .dashboard .title,
@@ -686,7 +686,7 @@ html.ormeco-dark .dashboard .announcement-meta,
 html.ormeco-dark .dashboard .announcement-body,
 html.ormeco-dark .dashboard .table th,
 html.ormeco-dark .dashboard .empty-state p {
-    color: #a6bed8 !important;
+    color: #afc5dd !important;
 }
 
 html.ormeco-dark .dashboard .chart-center,
@@ -695,15 +695,15 @@ html.ormeco-dark .dashboard .hero-pill,
 html.ormeco-dark .dashboard .kpi-icon,
 html.ormeco-dark .dashboard .card-icon,
 html.ormeco-dark .dashboard .kpi-trend {
-    background: #1b2b3f !important;
-    border-color: #36516f !important;
+    background: #122337 !important;
+    border-color: #35516f !important;
 }
 
 html.ormeco-dark .dashboard .table th,
 html.ormeco-dark .dashboard .seminar-table th,
 html.ormeco-dark .report-table th {
-    background: #1d2d40 !important;
-    color: #b8cde4 !important;
+    background: #13263d !important;
+    color: #c9dcef !important;
 }
 
 html.ormeco-dark .dashboard .table td,
@@ -712,7 +712,7 @@ html.ormeco-dark .report-table td,
 html.ormeco-dark .report-table th,
 html.ormeco-dark .seminar-table td,
 html.ormeco-dark .seminar-table th {
-    border-bottom-color: #2d435d !important;
+    border-bottom-color: #28405a !important;
 }
 
 html.ormeco-dark .notifications-page .summary-card,
@@ -732,8 +732,8 @@ html.ormeco-dark .reports-page .chart-shell,
 html.ormeco-dark .reports-page .legend-item,
 html.ormeco-dark .reports-page .benefit-item,
 html.ormeco-dark .reports-page .pie-center {
-    background: #1a2738 !important;
-    border-color: #33506f !important;
+    background: #0f1d31 !important;
+    border-color: #34516f !important;
 }
 
 html.ormeco-dark .notifications-page .summary-card strong,
@@ -765,7 +765,7 @@ html.ormeco-dark .reports-page .pie-label,
 html.ormeco-dark .reports-page .benefit-name,
 html.ormeco-dark .reports-page .axis-label,
 html.ormeco-dark .reports-page .empty-state {
-    color: #a6bed8 !important;
+    color: #afc5dd !important;
 }
 
 
@@ -774,11 +774,11 @@ html.ormeco-dark .reports-page .empty-state {
 html.ormeco-dark body .reports-page .report-table tbody tr,
 html.ormeco-dark body .reports-page .report-table tbody tr:nth-child(odd),
 html.ormeco-dark body .reports-page .report-table tbody tr:nth-child(even) {
-    background: #1a2738 !important;
+    background: #0f1d31 !important;
 }
 
 html.ormeco-dark body .reports-page .report-table tbody tr:hover {
-    background: #22364d !important;
+    background: #16273d !important;
 }
 
 html.ormeco-dark body .reports-page .report-table tbody tr td,

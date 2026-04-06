@@ -344,7 +344,7 @@ onMounted(load);
 :global(html.ormeco-dark) .notifications-page .summary-card,
 :global(html.ormeco-dark) .notifications-page .filter-card,
 :global(html.ormeco-dark) .notifications-page .table-card {
-  background: #1a2738;
+  background: #0f1d31;
   border-color: #33506f;
 }
 
@@ -363,7 +363,7 @@ onMounted(load);
 
 :global(html.ormeco-dark) .notifications-page .status-select,
 :global(html.ormeco-dark) .notifications-page .search-input {
-  background: #182638;
+  background: #142436;
   border-color: #33506f;
   color: #e9f3ff;
 }
@@ -374,7 +374,7 @@ onMounted(load);
 }
 
 :global(html.ormeco-dark) .notifications-page .report-table th {
-  background: #1d2d40;
+  background: #13263d;
 }
 
 :global(html.ormeco-dark) .notifications-page .btn-danger {

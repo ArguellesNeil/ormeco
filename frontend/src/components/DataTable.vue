@@ -6,7 +6,7 @@
           <th v-for="col in columns" :key="col.key">
             {{ col.label }}
           </th>
-          <th v-if="showActions">Actions</th>
+          <th v-if="showActions" class="actions-head">Actions</th>
         </tr>
       </thead>
 
@@ -123,8 +123,14 @@ defineProps({
   vertical-align: middle;
 }
 
+.actions-head {
+  text-align: right;
+}
+
 .actions-cell {
   padding: 10px 14px;
+  width: 1%;
+  white-space: nowrap;
 }
 
 .action-buttons {
