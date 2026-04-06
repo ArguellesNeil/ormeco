@@ -29,6 +29,12 @@
               :d="d"
             />
           </svg>
+          <span
+            v-if="item.to === '/notifications' && unreadNotifications > 0"
+            class="nav-notification-badge"
+          >
+            {{ toBadgeText(unreadNotifications) }}
+          </span>
         </span>
         <span class="nav-label">{{ item.label }}</span>
       </router-link>
@@ -41,9 +47,52 @@
 </template>
 
 <script setup>
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import api from "../api";
 
 const route = useRoute();
+const unreadNotifications = ref(0);
+let unreadPollTimer = null;
+
+const toBadgeText = (count) => {
+  if (count > 99) return "99+";
+  return String(count);
+};
+
+const setUnreadFromValue = (value) => {
+  const parsed = Number(value);
+  unreadNotifications.value = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+};
+
+const loadUnreadNotifications = async () => {
+  try {
+    const { data } = await api.get("/notifications", {
+      params: {
+        status: "unread",
+        limit: 500,
+      },
+    });
+
+    if (typeof data?.summary?.unread !== "undefined") {
+      setUnreadFromValue(data.summary.unread);
+      return;
+    }
+
+    setUnreadFromValue(Array.isArray(data?.items) ? data.items.length : 0);
+  } catch (_err) {
+    setUnreadFromValue(0);
+  }
+};
+
+const handleNotificationsUpdated = (event) => {
+  if (event && event.detail && typeof event.detail.unread !== "undefined") {
+    setUnreadFromValue(event.detail.unread);
+    return;
+  }
+
+  loadUnreadNotifications();
+};
 
 const menu = [
   {
@@ -113,20 +162,46 @@ const menu = [
     to: "/system-settings",
     tone: "steel",
     iconPaths: [
-      "M12 8A4 4 0 1 0 12 16A4 4 0 1 0 12 8Z",
-      "M12 2V5",
-      "M12 19V22",
-      "M4.9 4.9L7 7",
-      "M17 17L19.1 19.1",
-      "M2 12H5",
-      "M19 12H22",
-      "M4.9 19.1L7 17",
-      "M17 7L19.1 4.9"
+      "M21 4H14",
+      "M10 4H3",
+      "M21 12H12",
+      "M8 12H3",
+      "M21 20H16",
+      "M12 20H3",
+      "M14 2V6",
+      "M8 10V14",
+      "M16 18V22"
     ]
   }
 ];
 
 const isActive = (path) => route.path === path;
+
+onMounted(() => {
+  loadUnreadNotifications();
+
+  unreadPollTimer = window.setInterval(() => {
+    loadUnreadNotifications();
+  }, 60000);
+
+  window.addEventListener("ormeco:notifications-updated", handleNotificationsUpdated);
+});
+
+watch(
+  () => route.path,
+  () => {
+    loadUnreadNotifications();
+  }
+);
+
+onBeforeUnmount(() => {
+  if (unreadPollTimer) {
+    window.clearInterval(unreadPollTimer);
+    unreadPollTimer = null;
+  }
+
+  window.removeEventListener("ormeco:notifications-updated", handleNotificationsUpdated);
+});
 </script>
 
 <style scoped>
@@ -249,8 +324,27 @@ const isActive = (path) => route.path === path;
   background: color-mix(in srgb, var(--tone) 12%, #ffffff);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 28%, #d6e0ea);
   transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
+}
+
+.nav-notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #d53434;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 6px 12px rgba(179, 34, 34, 0.3);
+  z-index: 3;
 }
 
 .nav-icon::after {
