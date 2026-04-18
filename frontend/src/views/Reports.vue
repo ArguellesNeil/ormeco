@@ -67,6 +67,20 @@
                   :y2="tick.y"
                   class="grid-line"
                 />
+                <line
+                  :x1="chartBounds.left"
+                  :x2="chartBounds.right"
+                  :y1="chartBounds.bottom"
+                  :y2="chartBounds.bottom"
+                  class="axis-base"
+                />
+                <line
+                  :x1="chartBounds.left"
+                  :x2="chartBounds.left"
+                  :y1="chartBounds.top"
+                  :y2="chartBounds.bottom"
+                  class="axis-base"
+                />
               </g>
 
               <path
@@ -81,7 +95,7 @@
                   :points="series.points"
                   fill="none"
                   :stroke="series.color"
-                  stroke-width="3.4"
+                  stroke-width="4"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   class="line-path"
@@ -96,16 +110,17 @@
                   :key="`${series.key}-${idx}`"
                   :cx="point.x"
                   :cy="point.y"
-                  r="4.2"
+                  r="4.8"
                   :fill="series.color"
                   stroke="#ffffff"
-                  stroke-width="1.3"
+                  stroke-width="1.6"
                   class="line-point"
                   tabindex="0"
                   :class="{
                     muted: highlightedSeries && highlightedSeries !== series.key,
                     highlighted: highlightedSeries === series.key,
-                    active: tooltip.visible && tooltip.key === `${series.key}-${idx}`
+                    active: tooltip.visible && tooltip.key === `${series.key}-${idx}`,
+                    zero: point.value === 0
                   }"
                   @mouseenter="showPointTooltip(series, point, idx)"
                   @mouseleave="hidePointTooltip"
@@ -146,6 +161,7 @@
                 </text>
               </g>
             </svg>
+            <p v-if="isAnalyticsEmpty" class="chart-empty-note">No activity recorded in this period yet.</p>
           </div>
 
           <div class="chart-legend">
@@ -154,7 +170,7 @@
               :key="`legend-${series.key}`"
               type="button"
               class="legend-item"
-              :class="{ active: highlightedSeries === series.key }"
+              :class="{ active: highlightedSeries === series.key, 'zero-series': !series.total }"
               :style="{ animationDelay: `${idx * 45}ms` }"
               @mouseenter="highlightedSeries = series.key"
               @mouseleave="highlightedSeries = null"
@@ -190,7 +206,7 @@
             </thead>
             <tbody>
               <tr v-for="row in trendRows" :key="row.label">
-                <td>{{ row.label }}</td>
+                <td>{{ formatTrendTableLabel(row.label) }}</td>
                 <td>{{ row.users }}</td>
                 <td>{{ row.meters }}</td>
                 <td>{{ row.incidents }}</td>
@@ -255,7 +271,7 @@
         <div v-if="benefitChartData.length" class="benefit-distribution">
           <div class="pie-chart-container">
             <svg viewBox="0 0 240 240" class="pie-chart">
-              <circle cx="120" cy="120" r="90" fill="none" :stroke-dasharray="pieData.circumference" :stroke-dashoffset="0" stroke="url(#pieGradient)" stroke-width="60" opacity="0.2" />
+              <circle cx="120" cy="120" r="90" fill="none" :stroke-dasharray="pieData.circumference" :stroke-dashoffset="0" stroke="url(#pieGradient)" stroke-width="60" class="pie-base-ring" :opacity="hasBenefitData ? 0.24 : 0.45" />
               <defs>
                 <linearGradient id="pieGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stop-color="#0f8b6f" />
@@ -278,15 +294,15 @@
             </svg>
             <div class="pie-center">
               <strong class="pie-total">{{ totalApprovedBenefits }}</strong>
-              <span class="pie-label">Approved</span>
+              <span class="pie-label">{{ hasBenefitData ? "Approved" : "No approvals" }}</span>
             </div>
           </div>
 
           <div class="benefit-legend">
-            <div v-for="(item, idx) in benefitChartData" :key="`benefit-${idx}`" class="benefit-item">
+            <div v-for="(item, idx) in benefitChartData" :key="`benefit-${idx}`" class="benefit-item" :class="{ 'zero-item': !item.count }">
               <span class="benefit-color" :style="{ background: benefitColors[idx % benefitColors.length] }"></span>
               <span class="benefit-name">{{ item.name }}</span>
-              <strong class="benefit-count">{{ item.count }}</strong>
+              <strong class="benefit-count" :class="{ zero: !item.count }">{{ item.count }}</strong>
             </div>
           </div>
         </div>
@@ -409,19 +425,66 @@ const chartLabels = computed(() => report.value?.labels || []);
 const chartAnimationKey = computed(() => `${period.value}-${chartLabels.value.length}-${report.value?.generatedAt || ""}`);
 
 const formatAxisLabel = (label) => {
-  if (period.value !== "weekly") return label;
-  const d = new Date(label);
-  if (Number.isNaN(d.getTime())) return label;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const raw = String(label || "");
+
+  if (period.value === "yearly") {
+    const m = raw.match(/^(\d{4})-(\d{2})$/);
+    if (!m) return raw;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, 1);
+    return d.toLocaleDateString("en-US", { month: "short" });
+  }
+
+  if (period.value === "weekly" || period.value === "monthly") {
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return raw;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  return raw;
 };
 
 const formatTooltipPeriod = (label) => {
+  const raw = String(label || "");
+
+  if (period.value === "yearly") {
+    const m = raw.match(/^(\d{4})-(\d{2})$/);
+    if (!m) return raw;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, 1);
+    return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  }
+
   if (period.value === "weekly") {
-    const d = new Date(label);
-    if (Number.isNaN(d.getTime())) return `Week of ${label}`;
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return `Week of ${raw}`;
     return `Week of ${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
   }
-  return label;
+
+  if (period.value === "monthly") {
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return raw;
+    return d.toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" });
+  }
+
+  return raw;
+};
+
+const formatTrendTableLabel = (label) => {
+  const raw = String(label || "");
+
+  if (period.value === "yearly") {
+    const m = raw.match(/^(\d{4})-(\d{2})$/);
+    if (!m) return raw;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, 1);
+    return d.toLocaleDateString("en-US", { month: "long" });
+  }
+
+  if (period.value === "monthly") {
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return raw;
+    return d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+  }
+
+  return raw;
 };
 
 const chartMax = computed(() => {
@@ -486,6 +549,11 @@ const chartSeries = computed(() => {
     points: toPointsString(series.data),
     pointData: toPointData(series.data),
   }));
+});
+
+const isAnalyticsEmpty = computed(() => {
+  if (!chartSeries.value.length) return true;
+  return chartSeries.value.every((series) => Number(series.total) === 0);
 });
 
 const totalSeriesPath = computed(() => {
@@ -570,6 +638,8 @@ const pieData = computed(() => {
 const totalApprovedBenefits = computed(() => {
   return benefitChartData.value.reduce((sum, item) => sum + item.count, 0);
 });
+
+const hasBenefitData = computed(() => totalApprovedBenefits.value > 0);
 
 const pieSlices = computed(() => {
   const total = pieData.value.total;
@@ -818,11 +888,22 @@ const exportPdf = async () => {
     cursorY += 14;
 
     try {
+      const captureScale = Math.min(3, Math.max(2.25, (window.devicePixelRatio || 1) * 1.6));
+
+      // Wait for any pending chart paint before capturing to avoid partial/soft frames.
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
       const canvas = await html2canvas(element, {
-        scale: 1.7,
+        scale: captureScale,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        removeContainer: true,
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -843,7 +924,7 @@ const exportPdf = async () => {
         cursorY = contentTop;
       }
 
-      doc.addImage(imgData, "PNG", marginX, cursorY, imgW, imgH, undefined, "FAST");
+      doc.addImage(imgData, "PNG", marginX, cursorY, imgW, imgH, undefined, "SLOW");
       cursorY += imgH + 16;
     } catch (captureErr) {
       doc.setFontSize(10);
@@ -853,15 +934,20 @@ const exportPdf = async () => {
     }
   };
 
-  await addGraphSnapshot({
-    title: `${periodLabel.value} Analytics Graph`,
-    element: analyticsGraphRef.value,
-  });
+  document.documentElement.classList.add("pdf-export-capture");
+  try {
+    await addGraphSnapshot({
+      title: `${periodLabel.value} Analytics Graph`,
+      element: analyticsGraphRef.value,
+    });
 
-  await addGraphSnapshot({
-    title: "Benefit Distribution Graph",
-    element: benefitGraphRef.value,
-  });
+    await addGraphSnapshot({
+      title: "Benefit Distribution Graph",
+      element: benefitGraphRef.value,
+    });
+  } finally {
+    document.documentElement.classList.remove("pdf-export-capture");
+  }
 
   const statusRows = [];
   (report.value.statusBreakdown.incidents || []).forEach((r) => statusRows.push(["Incidents", r.status, r.total]));
@@ -887,18 +973,18 @@ const exportPdf = async () => {
     const raw = String(label || "");
     if (!raw) return "-";
 
-    if (period.value === "monthly") {
+    if (period.value === "yearly") {
       const m = raw.match(/^(\d{4})-(\d{2})$/);
       if (m) {
         const d = new Date(Number(m[1]), Number(m[2]) - 1, 1);
-        return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+        return d.toLocaleDateString("en-US", { month: "short" });
       }
     }
 
-    if (period.value === "daily") {
+    if (period.value === "daily" || period.value === "monthly") {
       const d = new Date(raw);
       if (!Number.isNaN(d.getTime())) {
-        return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+        return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: period.value === "daily" ? "numeric" : undefined });
       }
     }
 
@@ -1386,8 +1472,13 @@ onMounted(loadReport);
 }
 
 .grid-line {
-  stroke: #cfdeee;
-  stroke-width: 1.25;
+  stroke: #b7cae0;
+  stroke-width: 1.5;
+}
+
+.axis-base {
+  stroke: #7d98b8;
+  stroke-width: 2;
 }
 
 .area-fill {
@@ -1399,7 +1490,7 @@ onMounted(loadReport);
   stroke-dashoffset: 1500;
   animation: drawLine 1.05s ease forwards;
   transition: opacity 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
-  opacity: 0.97;
+  opacity: 1;
 }
 
 .line-path.highlighted {
@@ -1420,6 +1511,11 @@ onMounted(loadReport);
   cursor: pointer;
 }
 
+.line-point.zero {
+  fill: #ffffff;
+  stroke-width: 2;
+}
+
 .line-point.highlighted {
   r: 4.6;
 }
@@ -1434,9 +1530,23 @@ onMounted(loadReport);
 }
 
 .axis-label {
-  fill: #4f6887;
-  font-size: 12px;
+  fill: #345170;
+  font-size: 13px;
   font-weight: 800;
+}
+
+.chart-empty-note {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #26476c;
+  background: rgba(241, 248, 255, 0.96);
+  border: 1px solid #bed5ee;
+  border-radius: 8px;
 }
 
 .chart-legend {
@@ -1450,9 +1560,9 @@ onMounted(loadReport);
 }
 
 .legend-item {
-  border: 1px solid #dce7f3;
+  border: 1px solid #c9dbef;
   border-radius: 12px;
-  background: #f2f8ff;
+  background: #edf5ff;
   padding: 10px;
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -1509,12 +1619,17 @@ onMounted(loadReport);
 .legend-name {
   font-size: 13px;
   font-weight: 700;
-  color: #233d5c;
+  color: #1f3a59;
 }
 
 .legend-total {
-  font-size: 14px;
-  color: #0f2d4f;
+  font-size: 15px;
+  color: #0c2949;
+}
+
+.legend-item.zero-series {
+  background: #f5f9ff;
+  border-color: #d8e6f4;
 }
 
 .section-head {
@@ -1654,6 +1769,10 @@ onMounted(loadReport);
   height: 100%;
 }
 
+.pie-base-ring {
+  transition: opacity 0.2s ease;
+}
+
 .pie-center {
   position: absolute;
   top: 50%;
@@ -1668,8 +1787,8 @@ onMounted(loadReport);
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e4edf7;
-  box-shadow: 0 4px 12px rgba(16, 35, 62, 0.08);
+  border: 1px solid #cddff3;
+  box-shadow: 0 6px 14px rgba(16, 35, 62, 0.12);
 }
 
 .pie-total {
@@ -1715,9 +1834,13 @@ onMounted(loadReport);
   gap: 10px;
   padding: 8px;
   border-radius: 10px;
-  background: #f8fbff;
-  border: 1px solid #ecf2f9;
+  background: #f3f8ff;
+  border: 1px solid #dce8f4;
   transition: all 0.15s ease;
+}
+
+.benefit-item.zero-item {
+  opacity: 0.9;
 }
 
 .benefit-item:hover {
@@ -1745,6 +1868,10 @@ onMounted(loadReport);
   font-size: 14px;
   color: #10233e;
   font-weight: 700;
+}
+
+.benefit-count.zero {
+  color: #5f7692;
 }
 
 .empty-state {
@@ -1823,6 +1950,17 @@ onMounted(loadReport);
   }
 }
 
+:global(html.pdf-export-capture) .reports-page .chart-shell::before,
+:global(html.pdf-export-capture) .reports-page .area-fill,
+:global(html.pdf-export-capture) .reports-page .line-path,
+:global(html.pdf-export-capture) .reports-page .line-point,
+:global(html.pdf-export-capture) .reports-page .legend-item,
+:global(html.pdf-export-capture) .reports-page .reveal,
+:global(html.pdf-export-capture) .reports-page .kpi {
+  animation: none !important;
+  transition: none !important;
+}
+
 :global(html.ormeco-dark) .reports-page {
   --rp-bg-soft: #0f1d31;
   --rp-line: #33506f;
@@ -1880,8 +2018,26 @@ onMounted(loadReport);
 :global(html.ormeco-dark) .reports-page .pie-label,
 :global(html.ormeco-dark) .reports-page .benefit-name,
 :global(html.ormeco-dark) .reports-page .empty-state,
-:global(html.ormeco-dark) .reports-page .axis-label {
+:global(html.ormeco-dark) .reports-page .axis-label,
+:global(html.ormeco-dark) .reports-page .chart-empty-note {
   color: #a6bed8;
+}
+
+:global(html.ormeco-dark) .reports-page .axis-base {
+  stroke: #7f9dbe;
+}
+
+:global(html.ormeco-dark) .reports-page .grid-line {
+  stroke: #4f6f93;
+}
+
+:global(html.ormeco-dark) .reports-page .chart-empty-note {
+  background: rgba(18, 39, 62, 0.9);
+  border-color: #3e5f85;
+}
+
+:global(html.ormeco-dark) .reports-page .pie-base-ring {
+  opacity: 0.55;
 }
 
 :global(html.ormeco-dark) .reports-page .chart-shell,
