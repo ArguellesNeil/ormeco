@@ -31,19 +31,35 @@ function shiftPeriod(date, period, step) {
 
 function getPeriodConfig(period) {
     if (period === "daily") {
-        return { period, points: 14, bucketExpr: "DATE(%COL%)" };
+        return {
+            period: "daily",
+            labelPeriod: "daily",
+            points: 1,
+            bucketExpr: "DATE(%COL%)",
+        };
     }
     if (period === "weekly") {
         return {
             period: "weekly",
-            points: 12,
-            bucketExpr: "DATE_FORMAT(DATE_SUB(DATE(%COL%), INTERVAL WEEKDAY(%COL%) DAY), '%Y-%m-%d')",
+            labelPeriod: "daily",
+            points: 7,
+            bucketExpr: "DATE(%COL%)",
         };
     }
     if (period === "yearly") {
-        return { period: "yearly", points: 6, bucketExpr: "DATE_FORMAT(%COL%, '%Y')" };
+        return {
+            period: "yearly",
+            labelPeriod: "yearly",
+            points: 1,
+            bucketExpr: "DATE_FORMAT(%COL%, '%Y')",
+        };
     }
-    return { period: "monthly", points: 12, bucketExpr: "DATE_FORMAT(%COL%, '%Y-%m')" };
+    return {
+        period: "monthly",
+        labelPeriod: "monthly",
+        points: 1,
+        bucketExpr: "DATE_FORMAT(%COL%, '%Y-%m')",
+    };
 }
 
 function makeLabels(period, points) {
@@ -87,7 +103,7 @@ async function getOverview(req, res) {
     try {
         const requested = String(req.query.period || "monthly").toLowerCase();
         const config = getPeriodConfig(requested);
-        const labels = makeLabels(config.period, config.points);
+        const labels = makeLabels(config.labelPeriod || config.period, config.points);
 
         const [
             [summary]
@@ -102,24 +118,35 @@ async function getOverview(req, res) {
         (SELECT COUNT(*) FROM benefit_applications) AS total_benefit_apps,
         (SELECT COUNT(*) FROM benefit_applications WHERE status='pending') AS pending_benefits,
         (SELECT COUNT(DISTINCT benefit_id) FROM benefit_applications WHERE status='approved') AS active_benefits,
+        (SELECT COUNT(*) FROM seminar_schedule_requests) AS total_seminar_requests,
+        (SELECT COUNT(*) FROM seminar_schedule_requests WHERE status='pending') AS pending_seminar_requests,
         (SELECT COUNT(*) FROM announcements) AS total_announcements
     `);
 
-        const [users, meters, incidents, announcements] = await Promise.all([
+        const [users, meters, incidents, seminars, announcements] = await Promise.all([
             getSeries({ table: "users", dateColumn: "created_at", labels, config }),
             getSeries({ table: "meters", dateColumn: "installed_at", labels, config }),
             getSeries({ table: "incident_reports", dateColumn: "reported_at", labels, config }),
+            getSeries({ table: "seminar_schedule_requests", dateColumn: "created_at", labels, config }),
             getSeries({ table: "announcements", dateColumn: "created_at", labels, config }),
         ]);
 
-        // Benefit Distribution (pie chart data)
-        const [benefitDistribution] = await db.query(`
+        // Benefit Distribution (pie chart data) scoped to the selected reporting window.
+        const benefitApprovedDateExpr = "COALESCE(ba.reviewed_at, ba.applied_at)";
+        const benefitBucketExpr = config.bucketExpr.split("%COL%").join(benefitApprovedDateExpr);
+        const [benefitDistribution] = await db.query(
+            `
             SELECT b.id, b.name, COUNT(ba.id) AS count
             FROM benefits b
-            LEFT JOIN benefit_applications ba ON b.id = ba.benefit_id AND ba.status = 'approved'
+            LEFT JOIN benefit_applications ba
+              ON b.id = ba.benefit_id
+             AND ba.status = 'approved'
+             AND ${benefitApprovedDateExpr} IS NOT NULL
+             AND ${benefitBucketExpr} >= ?
             GROUP BY b.id, b.name
             ORDER BY count DESC
-        `);
+        `, [labels[0]]
+        );
 
 
 
@@ -163,6 +190,18 @@ async function getOverview(req, res) {
 
         UNION ALL
 
+                SELECT 'Seminar' AS source, CONCAT('Seminar request #', id, ' (', LOWER(COALESCE(status, 'pending')), ') submitted') AS title, created_at AS happened_at
+                FROM seminar_schedule_requests
+                WHERE created_at IS NOT NULL
+
+                UNION ALL
+
+                SELECT 'Seminar' AS source, CONCAT('Seminar request #', id, ' marked ', LOWER(COALESCE(status, 'pending'))) AS title, reviewed_at AS happened_at
+                FROM seminar_schedule_requests
+                WHERE reviewed_at IS NOT NULL
+
+                UNION ALL
+
         SELECT 'User' AS source, CONCAT('New user ', COALESCE(full_name, CONCAT('#', id))) AS title, created_at AS happened_at
         FROM users
         WHERE created_at IS NOT NULL
@@ -179,6 +218,7 @@ async function getOverview(req, res) {
                 users,
                 meters,
                 incidents,
+                seminars,
                 announcements,
             },
             statusBreakdown: {

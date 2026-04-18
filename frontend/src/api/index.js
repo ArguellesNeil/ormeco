@@ -19,8 +19,7 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         const status = error && error.response && error.response.status;
-        const message = String((error && error.response && error.response.data && error.response.data.message) || "").toLowerCase();
-        const isAuthError = status === 401 || message.includes("jwt") || message.includes("expired");
+        const isAuthError = status === 401;
 
         if (isAuthError && !handlingAuthError) {
             handlingAuthError = true;
@@ -29,7 +28,6 @@ api.interceptors.response.use(
 
             if (typeof window !== "undefined") {
                 if (window.location.pathname !== "/login") {
-                    alert("Your session expired. Please log in again.");
                     window.location.href = "/login";
                 }
             }

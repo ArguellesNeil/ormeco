@@ -34,8 +34,10 @@ exports.login = async(req, res) => {
         const user = rows[0];
         const policies = await getSecurityPolicies();
         const sessionTimeoutMinutes = Number(policies.sessionTimeoutMinutes || 30);
+        const fallbackTokenTtlSeconds = Math.max(3600, sessionTimeoutMinutes * 60 * 24);
+        const adminJwtExpiresIn = process.env.ADMIN_JWT_EXPIRES_IN || fallbackTokenTtlSeconds;
         const token = jwt.sign({ id: user.id, email: user.email, role: "admin" },
-            process.env.JWT_SECRET, { expiresIn: Math.max(300, sessionTimeoutMinutes * 60) }
+            process.env.JWT_SECRET, { expiresIn: adminJwtExpiresIn }
         );
 
         await logAuditEvent({

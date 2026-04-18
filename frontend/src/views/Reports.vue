@@ -52,8 +52,8 @@
             <svg :key="chartAnimationKey" viewBox="0 0 980 340" class="trend-chart" role="img" aria-label="System trend chart">
               <defs>
                 <linearGradient id="totalAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#0f8b6f" stop-opacity="0.34" />
-                  <stop offset="100%" stop-color="#0f8b6f" stop-opacity="0.03" />
+                  <stop offset="0%" stop-color="#0f8b6f" stop-opacity="0.2" />
+                  <stop offset="100%" stop-color="#0f8b6f" stop-opacity="0.015" />
                 </linearGradient>
               </defs>
 
@@ -81,7 +81,7 @@
                   :points="series.points"
                   fill="none"
                   :stroke="series.color"
-                  stroke-width="3"
+                  stroke-width="3.4"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   class="line-path"
@@ -96,8 +96,10 @@
                   :key="`${series.key}-${idx}`"
                   :cx="point.x"
                   :cy="point.y"
-                  r="3.6"
+                  r="4.2"
                   :fill="series.color"
+                  stroke="#ffffff"
+                  stroke-width="1.3"
                   class="line-point"
                   tabindex="0"
                   :class="{
@@ -167,7 +169,7 @@
         </div>
       </section>
 
-      <section ref="benefitGraphRef" class="card-surface section-block reveal">
+      <section class="card-surface section-block reveal">
         <div class="section-head">
           <h3>Activity Trend ({{ periodLabel }})</h3>
           <span>Generated: {{ formatDateTime(report.generatedAt) }}</span>
@@ -181,6 +183,7 @@
                 <th>Users</th>
                 <th>Meters</th>
                 <th>Incidents</th>
+                <th>Seminars</th>
                 <th>Announcements</th>
                 <th>Total</th>
               </tr>
@@ -191,6 +194,7 @@
                 <td>{{ row.users }}</td>
                 <td>{{ row.meters }}</td>
                 <td>{{ row.incidents }}</td>
+                <td>{{ row.seminars }}</td>
                 <td>{{ row.announcements }}</td>
                 <td><strong>{{ row.total }}</strong></td>
               </tr>
@@ -242,10 +246,10 @@
       </section>
 
       <!-- Benefit Distribution Chart -->
-      <section class="card-surface section-block reveal">
+      <section ref="benefitGraphRef" class="card-surface section-block reveal">
         <div class="section-head">
           <h3>Benefit Distribution</h3>
-          <span>Approved applications by benefit type</span>
+          <span>Approved applications by benefit type ({{ periodLabel }})</span>
         </div>
 
         <div v-if="benefitChartData.length" class="benefit-distribution">
@@ -370,6 +374,8 @@ const summaryCards = computed(() => {
     { label: "Total Users", value: s.total_users || 0 },
     { label: "Active Benefits", value: s.active_benefits || 0 },
     { label: "Pending Benefits", value: s.pending_benefits || 0 },
+    { label: "Total Seminar Requests", value: s.total_seminar_requests || 0 },
+    { label: "Pending Seminar Requests", value: s.pending_seminar_requests || 0 },
     { label: "Open Incidents", value: s.open_incidents || 0 },
     { label: "Active Meters", value: s.active_meters || 0 },
     { label: "Announcements", value: s.total_announcements || 0 },
@@ -385,14 +391,16 @@ const trendRows = computed(() => {
     const users = Number(trends.users?.[idx] || 0);
     const meters = Number(trends.meters?.[idx] || 0);
     const incidents = Number(trends.incidents?.[idx] || 0);
+    const seminars = Number(trends.seminars?.[idx] || 0);
     const announcements = Number(trends.announcements?.[idx] || 0);
     return {
       label,
       users,
       meters,
       incidents,
+      seminars,
       announcements,
-      total: users + meters + incidents + announcements,
+      total: users + meters + incidents + seminars + announcements,
     };
   });
 });
@@ -423,6 +431,7 @@ const chartMax = computed(() => {
     ...(trends.users || []),
     ...(trends.meters || []),
     ...(trends.incidents || []),
+    ...(trends.seminars || []),
     ...(trends.announcements || []),
   ].map((n) => Number(n) || 0);
   const peak = Math.max(0, ...all);
@@ -464,10 +473,11 @@ const chartSeries = computed(() => {
   if (!report.value) return [];
   const trends = report.value.trends || {};
   const list = [
-    { key: "users", label: "Users", color: "#2f6ea8", data: (trends.users || []).map((n) => Number(n) || 0) },
-    { key: "meters", label: "Meters", color: "#0f8b6f", data: (trends.meters || []).map((n) => Number(n) || 0) },
-    { key: "incidents", label: "Incidents", color: "#d17d2a", data: (trends.incidents || []).map((n) => Number(n) || 0) },
-    { key: "announcements", label: "Announcements", color: "#7a57b3", data: (trends.announcements || []).map((n) => Number(n) || 0) },
+    { key: "users", label: "Users", color: "#2b6cb0", data: (trends.users || []).map((n) => Number(n) || 0) },
+    { key: "meters", label: "Meters", color: "#1b9e77", data: (trends.meters || []).map((n) => Number(n) || 0) },
+    { key: "incidents", label: "Incidents", color: "#d97706", data: (trends.incidents || []).map((n) => Number(n) || 0) },
+    { key: "seminars", label: "Seminars", color: "#8b5cf6", data: (trends.seminars || []).map((n) => Number(n) || 0) },
+    { key: "announcements", label: "Announcements", color: "#db2777", data: (trends.announcements || []).map((n) => Number(n) || 0) },
   ];
 
   return list.map((series) => ({
@@ -635,15 +645,6 @@ const exportPdf = async () => {
   };
 
   const createdAt = new Date();
-  const generatedDate = createdAt.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-  const generatedTime = createdAt.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
   const createdAtLabel = createdAt.toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -652,58 +653,106 @@ const exportPdf = async () => {
     minute: "2-digit",
   });
   const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
 
   const marginX = 40;
   const contentWidth = pageW - marginX * 2;
-  const reportTitle = "ORMECO System Performance Report";
-  const reportSubtitle = "Operational analytics for daily, weekly, monthly, and yearly monitoring";
-  const infoW = 232;
-  const infoH = 62;
-  const infoX = pageW - marginX - infoW;
-  const infoY = 24;
+  const headerHeight = 74;
+  const footerHeight = 56;
+  const contentTop = headerHeight + 18;
+  const contentBottom = pageH - footerHeight - 26;
+  const pdfTableMargin = {
+    top: contentTop,
+    right: marginX,
+    bottom: pageH - contentBottom,
+    left: marginX,
+  };
 
-  const titleMaxW = infoX - marginX - 20;
+  const loadImageAsPngDataUrl = (src) =>
+    new Promise((resolve) => {
+      try {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              resolve(null);
+              return;
+            }
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+          } catch (_) {
+            resolve(null);
+          }
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+      } catch (_) {
+        resolve(null);
+      }
+    });
 
-  doc.setFontSize(18);
-  const titleLines = doc.splitTextToSize(reportTitle, titleMaxW);
-  doc.setFontSize(11);
-  const subtitleLines = doc.splitTextToSize(reportSubtitle, titleMaxW);
+  const [headerImage, footerImage] = await Promise.all([
+    loadImageAsPngDataUrl("/report-pdf-header-template.png?v=20260418d"),
+    loadImageAsPngDataUrl("/report-pdf-footer-template.png?v=20260418c"),
+  ]);
 
-  const titleY = 38;
-  const titleBlockH = titleLines.length * 20;
-  const subtitleY = titleY + titleBlockH + 2;
-  const subtitleBlockH = subtitleLines.length * 14;
-  const headerH = Math.max(infoY + infoH + 16, subtitleY + subtitleBlockH + 18);
+  const drawPageBranding = (pageNumber, totalPages) => {
+    doc.setPage(pageNumber);
 
-  doc.setFillColor(...palette.navy);
-  doc.rect(0, 0, pageW, headerH, "F");
+    if (headerImage) {
+      doc.addImage(headerImage, "PNG", 0, 0, pageW, headerHeight, undefined, "FAST");
+    } else {
+      doc.setFillColor(...palette.navy);
+      doc.rect(0, 0, pageW, headerHeight, "F");
+    }
 
-  doc.setFillColor(...palette.teal);
-  doc.rect(0, headerH - 4, pageW, 4, "F");
+    if (footerImage) {
+      doc.addImage(footerImage, "PNG", 0, pageH - footerHeight, pageW, footerHeight, undefined, "FAST");
+    } else {
+      doc.setFillColor(...palette.teal);
+      doc.rect(0, pageH - footerHeight, pageW, footerHeight, "F");
+    }
 
-  doc.setDrawColor(74, 110, 149);
-  doc.setFillColor(...palette.navySoft);
-  doc.roundedRect(infoX, infoY, infoW, infoH, 10, 10, "FD");
+    doc.setFontSize(9);
+    doc.setTextColor(...palette.muted);
+    doc.text(`Generated ${createdAtLabel}`, marginX, pageH - footerHeight - 8);
+    doc.text(`Page ${pageNumber} of ${totalPages}`, pageW - marginX - 66, pageH - footerHeight - 8);
+  };
 
-  doc.setFontSize(9);
-  doc.setTextColor(173, 201, 232);
-  doc.text("REPORT FILTER", infoX + 14, infoY + 16);
+  const ensureSectionSpace = (requiredHeight = 44) => {
+    if (cursorY + requiredHeight > contentBottom) {
+      doc.addPage();
+      cursorY = contentTop;
+    }
+  };
 
-  doc.setFontSize(12);
-  doc.setTextColor(236, 244, 252);
-  doc.text(`Period: ${periodLabel.value}`, infoX + 14, infoY + 34);
-  doc.text(`Generated: ${generatedDate}  ${generatedTime}`, infoX + 14, infoY + 51);
+  let cursorY = contentTop;
 
-  doc.setFontSize(18);
-  doc.setTextColor(255, 255, 255);
-  doc.text(titleLines, marginX, titleY);
+  doc.setFontSize(17);
+  doc.setTextColor(...palette.navy);
+  doc.text("ORMECO System Performance Report", marginX, cursorY);
+  cursorY += 18;
 
-  doc.setFontSize(11);
-  doc.setTextColor(203, 219, 238);
-  doc.text(subtitleLines, marginX, subtitleY);
+  doc.setFontSize(10);
+  doc.setTextColor(...palette.muted);
+  doc.text("Operational analytics for daily, weekly, monthly, and yearly monitoring", marginX, cursorY);
+  cursorY += 14;
 
-  let cursorY = headerH + 26;
+  doc.setFontSize(10);
+  doc.setTextColor(...palette.text);
+  doc.text(`Period: ${periodLabel.value}`, marginX, cursorY);
+  doc.text(`Generated: ${createdAtLabel}`, pageW - marginX - 175, cursorY);
+  cursorY += 12;
 
+  doc.setDrawColor(...palette.line);
+  doc.line(marginX, cursorY, marginX + contentWidth, cursorY);
+  cursorY += 16;
+
+  ensureSectionSpace(44);
   doc.setFontSize(13);
   doc.setTextColor(...palette.navy);
   doc.text("Executive Summary", marginX, cursorY);
@@ -725,6 +774,9 @@ const exportPdf = async () => {
     head: [["Core Metrics", ""]],
     body: summaryPairs,
     theme: "grid",
+    margin: pdfTableMargin,
+    pageBreak: "auto",
+    rowPageBreak: "avoid",
     styles: {
       fontSize: 10,
       cellPadding: 8,
@@ -752,11 +804,10 @@ const exportPdf = async () => {
   const addGraphSnapshot = async ({ title, element }) => {
     if (!element) return;
 
-    const pageH = doc.internal.pageSize.getHeight();
     const titleBlock = 24;
-    if (cursorY + titleBlock > pageH - 50) {
+    if (cursorY + titleBlock > contentBottom) {
       doc.addPage();
-      cursorY = 46;
+      cursorY = contentTop;
     }
 
     doc.setFontSize(13);
@@ -776,7 +827,7 @@ const exportPdf = async () => {
 
       const imgData = canvas.toDataURL("image/png");
       const maxW = contentWidth;
-      const maxH = pageH - cursorY - 50;
+      const maxH = contentBottom - cursorY;
       let imgW = maxW;
       let imgH = (canvas.height * imgW) / canvas.width;
 
@@ -787,9 +838,9 @@ const exportPdf = async () => {
 
       if (imgH < 40) return;
 
-      if (cursorY + imgH > pageH - 50) {
+      if (cursorY + imgH > contentBottom) {
         doc.addPage();
-        cursorY = 46;
+        cursorY = contentTop;
       }
 
       doc.addImage(imgData, "PNG", marginX, cursorY, imgW, imgH, undefined, "FAST");
@@ -812,52 +863,119 @@ const exportPdf = async () => {
     element: benefitGraphRef.value,
   });
 
-  doc.setFontSize(13);
-  doc.setTextColor(...palette.navy);
-  doc.text("Trend Breakdown", marginX, cursorY);
-  doc.setDrawColor(...palette.line);
-  doc.line(marginX, cursorY + 8, marginX + contentWidth, cursorY + 8);
-
-  autoTable(doc, {
-    startY: cursorY + 14,
-    head: [["Period", "Users", "Meters", "Incidents", "Announcements", "Total"]],
-    body: trendRows.value.map((row) => [
-      row.label,
-      row.users,
-      row.meters,
-      row.incidents,
-      row.announcements,
-      row.total,
-    ]),
-    theme: "grid",
-    styles: {
-      fontSize: 9,
-      cellPadding: 6,
-      textColor: palette.text,
-      lineColor: palette.line,
-      lineWidth: 1,
-    },
-    headStyles: {
-      fillColor: palette.navySoft,
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-    },
-    alternateRowStyles: {
-      fillColor: palette.rowAlt,
-    },
-    columnStyles: {
-      5: { fontStyle: "bold" },
-    },
-  });
-
   const statusRows = [];
   (report.value.statusBreakdown.incidents || []).forEach((r) => statusRows.push(["Incidents", r.status, r.total]));
   (report.value.statusBreakdown.meters || []).forEach((r) => statusRows.push(["Meters", r.status, r.total]));
   (report.value.statusBreakdown.benefitApplications || []).forEach((r) => statusRows.push(["Benefits", r.status, r.total]));
   (report.value.statusBreakdown.seminarSchedule || []).forEach((r) => statusRows.push(["Seminars", r.status, r.total]));
 
-  cursorY = doc.lastAutoTable.finalY + 18;
+  // Force Trend Breakdown table to start on page 2.
+  while (doc.getNumberOfPages() < 2) {
+    doc.addPage();
+  }
+  doc.setPage(2);
+  cursorY = contentTop;
 
+  ensureSectionSpace(44);
+  doc.setFontSize(14);
+  doc.setTextColor(...palette.navy);
+  doc.text("Trend Breakdown", marginX, cursorY);
+  doc.setDrawColor(...palette.line);
+  doc.line(marginX, cursorY + 8, marginX + contentWidth, cursorY + 8);
+
+  const formatTrendLabelForPdf = (label) => {
+    const raw = String(label || "");
+    if (!raw) return "-";
+
+    if (period.value === "monthly") {
+      const m = raw.match(/^(\d{4})-(\d{2})$/);
+      if (m) {
+        const d = new Date(Number(m[1]), Number(m[2]) - 1, 1);
+        return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      }
+    }
+
+    if (period.value === "daily") {
+      const d = new Date(raw);
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+      }
+    }
+
+    if (period.value === "weekly") {
+      const d = new Date(raw);
+      if (!Number.isNaN(d.getTime())) {
+        return `Week of ${d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}`;
+      }
+    }
+
+    return raw;
+  };
+
+  const trendTableRows = trendRows.value.map((row) => [
+    formatTrendLabelForPdf(row.label),
+    Number(row.users || 0).toLocaleString("en-US"),
+    Number(row.meters || 0).toLocaleString("en-US"),
+    Number(row.incidents || 0).toLocaleString("en-US"),
+    Number(row.seminars || 0).toLocaleString("en-US"),
+    Number(row.announcements || 0).toLocaleString("en-US"),
+    Number(row.total || 0).toLocaleString("en-US"),
+  ]);
+
+  autoTable(doc, {
+    startY: cursorY + 14,
+    head: [["Period", "Users", "Meters", "Incidents", "Seminars", "Announcements", "Total"]],
+    body: trendTableRows,
+    theme: "grid",
+    margin: pdfTableMargin,
+    pageBreak: "avoid",
+    rowPageBreak: "avoid",
+    styles: {
+      fontSize: 9,
+      cellPadding: 5,
+      textColor: [24, 42, 66],
+      lineColor: [206, 220, 236],
+      lineWidth: 1,
+    },
+    headStyles: {
+      fillColor: [33, 79, 126],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+      fontSize: 9,
+      halign: "center",
+    },
+    alternateRowStyles: {
+      fillColor: [245, 249, 255],
+    },
+    columnStyles: {
+      0: { cellWidth: 98, halign: "left" },
+      1: { cellWidth: 50, halign: "center" },
+      2: { cellWidth: 52, halign: "center" },
+      3: { cellWidth: 58, halign: "center" },
+      4: { cellWidth: 58, halign: "center" },
+      5: { cellWidth: 82, halign: "center" },
+      6: { cellWidth: 50, halign: "center", fontStyle: "bold" },
+    },
+    didParseCell: (hookData) => {
+      if (hookData.section !== "body") return;
+      if (hookData.column.index === 0) return;
+
+      const raw = String(hookData.cell.raw || "").replace(/,/g, "");
+      const value = Number(raw);
+      if (!Number.isFinite(value)) return;
+
+      if (value === 0) {
+        hookData.cell.styles.textColor = [110, 130, 152];
+      } else if (hookData.column.index === 6) {
+        hookData.cell.styles.textColor = [22, 56, 96];
+      }
+    },
+  });
+
+  cursorY = doc.lastAutoTable.finalY + 12;
+
+  // Place Operational Status on the same page (page 2) below Trend Breakdown.
+  ensureSectionSpace(40);
   doc.setFontSize(13);
   doc.setTextColor(...palette.navy);
   doc.text("Operational Status Distribution", marginX, cursorY);
@@ -865,30 +983,39 @@ const exportPdf = async () => {
   doc.line(marginX, cursorY + 8, marginX + contentWidth, cursorY + 8);
 
   autoTable(doc, {
-    startY: cursorY + 14,
+    startY: cursorY + 12,
     head: [["Category", "Status", "Count"]],
     body: statusRows,
     theme: "grid",
+    margin: pdfTableMargin,
+    pageBreak: "avoid",
+    rowPageBreak: "avoid",
     headStyles: {
-      fillColor: palette.navySoft,
+      fillColor: [33, 79, 126],
       textColor: [255, 255, 255],
       fontStyle: "bold",
+      fontSize: 9,
     },
     styles: {
       fontSize: 9,
-      cellPadding: 6,
-      textColor: palette.text,
-      lineColor: palette.line,
+      cellPadding: 5,
+      textColor: [24, 42, 66],
+      lineColor: [206, 220, 236],
       lineWidth: 1,
     },
     alternateRowStyles: {
-      fillColor: palette.rowAlt,
+      fillColor: [245, 249, 255],
     },
   });
 
-  cursorY = doc.lastAutoTable.finalY + 18;
+  cursorY = doc.lastAutoTable.finalY + 14;
 
-  doc.setFontSize(13);
+  // Keep Recent Activities table alone on the next page.
+  doc.addPage();
+  cursorY = contentTop;
+
+  ensureSectionSpace(44);
+  doc.setFontSize(14);
   doc.setTextColor(...palette.navy);
   doc.text("Recent System Activities", marginX, cursorY);
   doc.setDrawColor(...palette.line);
@@ -903,38 +1030,187 @@ const exportPdf = async () => {
       formatDateTime(r.happened_at),
     ]),
     theme: "grid",
+    margin: pdfTableMargin,
+    pageBreak: "auto",
+    rowPageBreak: "avoid",
     headStyles: {
-      fillColor: palette.tealDark,
+      fillColor: [20, 113, 92],
       textColor: [255, 255, 255],
       fontStyle: "bold",
+      fontSize: 10,
     },
     styles: {
-      fontSize: 9,
-      cellPadding: 6,
-      textColor: palette.text,
-      lineColor: palette.line,
+      fontSize: 10,
+      cellPadding: 7,
+      textColor: [24, 42, 66],
+      lineColor: [206, 220, 236],
       lineWidth: 1,
     },
     alternateRowStyles: {
-      fillColor: palette.rowAlt,
+      fillColor: [245, 249, 255],
     },
     columnStyles: {
-      1: { cellWidth: 280 },
+      0: { cellWidth: 90, halign: "left" },
+      1: { cellWidth: 255, halign: "left" },
+      2: { cellWidth: 135, halign: "left" },
     },
+  });
+
+  cursorY = doc.lastAutoTable.finalY + 16;
+
+  const summary = report.value.summary || {};
+  const periodUnitMap = {
+    daily: "day",
+    weekly: "week",
+    monthly: "month",
+    yearly: "year",
+  };
+  const periodUnit = periodUnitMap[period.value] || "period";
+
+  const rows = trendRows.value || [];
+  const firstRow = rows.length ? rows[0] : null;
+  const latestRow = rows.length ? rows[rows.length - 1] : null;
+  const previousRow = rows.length > 1 ? rows[rows.length - 2] : null;
+
+  const rangeLabel = firstRow && latestRow
+    ? `${formatTrendLabelForPdf(firstRow.label)} to ${formatTrendLabelForPdf(latestRow.label)}`
+    : "No activity window";
+
+  const windowTotals = rows.reduce(
+    (acc, row) => {
+      acc.users += Number(row.users || 0);
+      acc.meters += Number(row.meters || 0);
+      acc.incidents += Number(row.incidents || 0);
+      acc.seminars += Number(row.seminars || 0);
+      acc.announcements += Number(row.announcements || 0);
+      acc.total += Number(row.total || 0);
+      return acc;
+    },
+    { users: 0, meters: 0, incidents: 0, seminars: 0, announcements: 0, total: 0 }
+  );
+
+  const categoryNameMap = {
+    users: "Users",
+    meters: "Meters",
+    incidents: "Incidents",
+    seminars: "Seminars",
+    announcements: "Announcements",
+  };
+
+  const getTopCategory = (totals) => {
+    const entries = Object.entries(totals)
+      .filter(([key]) => key !== "total")
+      .map(([key, value]) => ({ key, value: Number(value || 0) }))
+      .sort((a, b) => b.value - a.value);
+    return entries.length ? entries[0] : null;
+  };
+
+  const latestCategoryTotals = latestRow
+    ? {
+        users: Number(latestRow.users || 0),
+        meters: Number(latestRow.meters || 0),
+        incidents: Number(latestRow.incidents || 0),
+        seminars: Number(latestRow.seminars || 0),
+        announcements: Number(latestRow.announcements || 0),
+      }
+    : null;
+
+  const topLatest = latestCategoryTotals ? getTopCategory({ ...latestCategoryTotals, total: 0 }) : null;
+  const topOverall = getTopCategory(windowTotals);
+
+  const latestTotal = Number(latestRow?.total || 0);
+  const previousTotal = Number(previousRow?.total || 0);
+  const delta = latestTotal - previousTotal;
+
+  let deltaText = "no previous period data for comparison";
+  if (previousRow) {
+    if (delta > 0) {
+      deltaText = `up by ${delta.toLocaleString("en-US")} vs ${formatTrendLabelForPdf(previousRow.label)}`;
+    } else if (delta < 0) {
+      deltaText = `down by ${Math.abs(delta).toLocaleString("en-US")} vs ${formatTrendLabelForPdf(previousRow.label)}`;
+    } else {
+      deltaText = `unchanged vs ${formatTrendLabelForPdf(previousRow.label)}`;
+    }
+  }
+
+  const shortSummaryBullets = [
+    `Selected ${periodLabel.value.toLowerCase()} window (${rangeLabel}) recorded ${windowTotals.total.toLocaleString("en-US")} total updates across all monitored modules.`,
+    latestRow
+      ? `Latest ${periodUnit} (${formatTrendLabelForPdf(latestRow.label)}) logged ${latestTotal.toLocaleString("en-US")} updates, ${deltaText}.`
+      : `No latest ${periodUnit} activity is available for the selected window.`,
+    topLatest
+      ? `Top activity stream in the latest ${periodUnit}: ${categoryNameMap[topLatest.key]} (${topLatest.value.toLocaleString("en-US")}).`
+      : `No dominant activity stream was detected for the latest ${periodUnit}.`,
+    topOverall
+      ? `Overall top stream for this ${periodLabel.value.toLowerCase()} report: ${categoryNameMap[topOverall.key]} (${topOverall.value.toLocaleString("en-US")}). Open incidents: ${Number(summary.open_incidents || 0).toLocaleString("en-US")}; pending benefits: ${Number(summary.pending_benefits || 0).toLocaleString("en-US")}.`
+      : `Operational queue currently shows ${Number(summary.open_incidents || 0).toLocaleString("en-US")} open incidents and ${Number(summary.pending_benefits || 0).toLocaleString("en-US")} pending benefit applications.`,
+  ];
+
+  const kpiCards = [
+    { label: "Window Updates", value: windowTotals.total.toLocaleString("en-US") },
+    { label: `Latest ${periodLabel.value}`, value: latestTotal.toLocaleString("en-US") },
+    {
+      label: "Change vs Prev",
+      value: previousRow
+        ? `${delta > 0 ? "+" : ""}${delta.toLocaleString("en-US")}`
+        : "N/A",
+    },
+  ];
+
+  const bulletWrapWidth = contentWidth - 34;
+  const bulletLinesByItem = shortSummaryBullets.map((text) => doc.splitTextToSize(text, bulletWrapWidth));
+  const bulletSectionHeight = bulletLinesByItem.reduce((h, lines) => h + lines.length * 10 + 6, 0);
+  const summaryBoxHeight = 34 + 52 + bulletSectionHeight + 10;
+
+  ensureSectionSpace(summaryBoxHeight + 12);
+
+  doc.setFillColor(244, 249, 255);
+  doc.setDrawColor(198, 214, 232);
+  doc.roundedRect(marginX, cursorY, contentWidth, summaryBoxHeight, 9, 9, "FD");
+
+  doc.setFillColor(229, 239, 251);
+  doc.roundedRect(marginX + 1, cursorY + 1, contentWidth - 2, 24, 8, 8, "F");
+
+  doc.setFontSize(12);
+  doc.setTextColor(...palette.navy);
+  doc.text("Short Report Summary", marginX + 12, cursorY + 16);
+
+  doc.setFontSize(9);
+  doc.setTextColor(...palette.muted);
+  doc.text(`Prepared for ${periodLabel.value} period`, marginX + contentWidth - 146, cursorY + 16);
+
+  const cardsY = cursorY + 30;
+  const cardGap = 8;
+  const cardWidth = (contentWidth - cardGap * 2 - 24) / 3;
+
+  kpiCards.forEach((card, index) => {
+    const cardX = marginX + 12 + index * (cardWidth + cardGap);
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(206, 220, 236);
+    doc.roundedRect(cardX, cardsY, cardWidth, 42, 6, 6, "FD");
+
+    doc.setFontSize(8);
+    doc.setTextColor(...palette.muted);
+    doc.text(card.label, cardX + 8, cardsY + 13);
+
+    doc.setFontSize(13);
+    doc.setTextColor(...palette.navy);
+    doc.text(card.value, cardX + 8, cardsY + 30);
+  });
+
+  let bulletY = cardsY + 56;
+  doc.setFontSize(9);
+  doc.setTextColor(...palette.text);
+  bulletLinesByItem.forEach((lines) => {
+    doc.setFillColor(47, 110, 168);
+    doc.circle(marginX + 14, bulletY - 3, 1.6, "F");
+    doc.text(lines, marginX + 21, bulletY);
+    bulletY += lines.length * 10 + 6;
   });
 
   const totalPages = doc.getNumberOfPages();
   for (let page = 1; page <= totalPages; page += 1) {
-    doc.setPage(page);
-    const pageH = doc.internal.pageSize.getHeight();
-
-    doc.setDrawColor(...palette.line);
-    doc.line(marginX, pageH - 34, pageW - marginX, pageH - 34);
-
-    doc.setFontSize(9);
-    doc.setTextColor(...palette.muted);
-    doc.text(`ORMECO Confidential Report  •  ${createdAtLabel}`, marginX, pageH - 20);
-    doc.text(`Page ${page} of ${totalPages}`, pageW - marginX - 66, pageH - 20);
+    drawPageBranding(page, totalPages);
   }
 
   const fileDate = new Date().toISOString().slice(0, 10);
@@ -1110,8 +1386,8 @@ onMounted(loadReport);
 }
 
 .grid-line {
-  stroke: #e4edf7;
-  stroke-width: 1;
+  stroke: #cfdeee;
+  stroke-width: 1.25;
 }
 
 .area-fill {
@@ -1122,15 +1398,17 @@ onMounted(loadReport);
   stroke-dasharray: 1500;
   stroke-dashoffset: 1500;
   animation: drawLine 1.05s ease forwards;
-  transition: opacity 0.2s ease, stroke-width 0.2s ease;
+  transition: opacity 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
+  opacity: 0.97;
 }
 
 .line-path.highlighted {
-  stroke-width: 3.8;
+  stroke-width: 4.2;
+  filter: drop-shadow(0 0 4px rgba(15, 44, 84, 0.22));
 }
 
 .line-path.muted {
-  opacity: 0.2;
+  opacity: 0.48;
 }
 
 .line-point {
@@ -1147,18 +1425,18 @@ onMounted(loadReport);
 }
 
 .line-point.active {
-  r: 5;
+  r: 5.3;
   filter: drop-shadow(0 0 4px rgba(16, 35, 62, 0.28));
 }
 
 .line-point.muted {
-  opacity: 0.15;
+  opacity: 0.52;
 }
 
 .axis-label {
-  fill: #67809e;
-  font-size: 11px;
-  font-weight: 700;
+  fill: #4f6887;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .chart-legend {
@@ -1174,7 +1452,7 @@ onMounted(loadReport);
 .legend-item {
   border: 1px solid #dce7f3;
   border-radius: 12px;
-  background: #f7fbff;
+  background: #f2f8ff;
   padding: 10px;
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -1231,12 +1509,12 @@ onMounted(loadReport);
 .legend-name {
   font-size: 13px;
   font-weight: 700;
-  color: #304d6e;
+  color: #233d5c;
 }
 
 .legend-total {
   font-size: 14px;
-  color: #122b47;
+  color: #0f2d4f;
 }
 
 .section-head {

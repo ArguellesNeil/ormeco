@@ -18,7 +18,7 @@ async function getAllScheduleRequests(req, res) {
         COALESCE(m.member_code, '-') AS member_code,
         COALESCE(NULLIF(m.name, ''), u.full_name) AS member_name,
         u.email,
-        ssr.seminar_date,
+        DATE_FORMAT(ssr.seminar_date, '%Y-%m-%d') AS seminar_date,
         ssr.start_time,
         ssr.end_time,
         ssr.status,

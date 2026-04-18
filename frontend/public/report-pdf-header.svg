@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1248" height="160" viewBox="0 0 1248 160" role="img" aria-label="ORMECO report header">
+  <rect width="1248" height="160" fill="#ffffff"/>
+  <rect x="1" y="1" width="1246" height="158" fill="none" stroke="#cdd6df" stroke-width="2"/>
+
+  <rect x="6" y="48" width="138" height="60" fill="#087523"/>
+  <rect x="742" y="48" width="500" height="60" fill="#087523"/>
+
+  <defs>
+    <path id="logo-top-arc" d="M 169 78 A 35 35 0 0 1 239 78" fill="none"/>
+    <path id="logo-bottom-arc" d="M 239 78 A 35 35 0 0 1 169 78" fill="none"/>
+  </defs>
+
+  <circle cx="204" cy="78" r="46" fill="#24a54a" stroke="#065f1c" stroke-width="3"/>
+  <circle cx="204" cy="78" r="36" fill="#e9f9ee" stroke="#0a7c23" stroke-width="1.5"/>
+  <text font-family="Arial, Helvetica, sans-serif" font-size="6.2" font-weight="700" fill="#062d0f" letter-spacing="0.4">
+    <textPath href="#logo-top-arc" startOffset="50%" text-anchor="middle">ORIENTAL MINDORO ELECTRIC COOP</textPath>
+  </text>
+  <text font-family="Arial, Helvetica, sans-serif" font-size="6" font-weight="700" fill="#062d0f" letter-spacing="0.4">
+    <textPath href="#logo-bottom-arc" startOffset="50%" text-anchor="middle">ORMECO CALAPAN</textPath>
+  </text>
+
+  <path d="M196 55 C207 57 210 62 210 70 C210 78 204 85 197 91 C193 87 189 81 188 74 C187 67 190 60 196 55 Z" fill="#7bcf38"/>
+  <path d="M210 56 L223 66 L223 91 L207 100 L200 89 L214 82 L206 76 L216 68 Z" fill="#f2df3a" stroke="#b7a000" stroke-width="1"/>
+  <path d="M196 94 L205 76 L200 76 L209 60 L204 79 L209 79 Z" fill="#076f22"/>
+  <circle cx="201" cy="66" r="3.8" fill="#ffe85a" stroke="#0a7c23" stroke-width="0.8"/>
+
+  <text x="286" y="74" font-family="Arial, Helvetica, sans-serif" font-size="70" font-weight="900" fill="#000000" letter-spacing="1">ORMECO</text>
+  <text x="286" y="99" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" fill="#111111">Oriental Mindoro Electric Cooperative, Inc.</text>
+  <text x="286" y="121" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#111111">Brgy. Sta. Isabel, Calapan City, Or. Mindoro</text>
+  <text x="286" y="143" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#111111">(043) 288-78(01) - (03)</text>
+</svg>
