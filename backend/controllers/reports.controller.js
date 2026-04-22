@@ -1,5 +1,24 @@
 const db = require("../config/db");
 
+const WEEKDAY_NAME_TO_INDEX = {
+    mon: 0,
+    monday: 0,
+    tue: 1,
+    tues: 1,
+    tuesday: 1,
+    wed: 2,
+    wednesday: 2,
+    thu: 3,
+    thurs: 3,
+    thursday: 3,
+    fri: 4,
+    friday: 4,
+    sat: 5,
+    saturday: 5,
+    sun: 6,
+    sunday: 6,
+};
+
 function pad2(n) {
     return String(n).padStart(2, "0");
 }
@@ -33,6 +52,186 @@ function endOfDay(date) {
     const d = new Date(date);
     d.setHours(23, 59, 59, 999);
     return d;
+}
+
+function startOfDay(date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+}
+
+function parseDateOnly(value) {
+    const raw = String(value || "").trim();
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    if (
+        date.getFullYear() !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day
+    ) {
+        return null;
+    }
+
+    return startOfDay(date);
+}
+
+function parseWeekdayIndexes(value) {
+    if (typeof value === "undefined" || value === null || value === "") return [];
+
+    const tokens = Array.isArray(value) ?
+        value :
+        String(value)
+        .split(",")
+        .map((token) => token.trim())
+        .filter(Boolean);
+
+    const set = new Set();
+    for (const tokenRaw of tokens) {
+        const token = String(tokenRaw).trim().toLowerCase();
+        if (!token) continue;
+
+        if (/^\d+$/.test(token)) {
+            const parsed = Number(token);
+            if (parsed >= 0 && parsed <= 6) {
+                set.add(parsed);
+            }
+            continue;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(WEEKDAY_NAME_TO_INDEX, token)) {
+            set.add(WEEKDAY_NAME_TO_INDEX[token]);
+        }
+    }
+
+    return Array.from(set).sort((a, b) => a - b);
+}
+
+function buildDateFilterClause(dateExpr, startAt, endAt, weekdayIndexes = []) {
+    const parts = [
+        `${dateExpr} IS NOT NULL`,
+        `${dateExpr} >= ?`,
+        `${dateExpr} <= ?`,
+    ];
+    const params = [startAt, endAt];
+
+    if (weekdayIndexes.length) {
+        parts.push(`WEEKDAY(${dateExpr}) IN (${weekdayIndexes.map(() => "?").join(",")})`);
+        params.push(...weekdayIndexes);
+    }
+
+    return {
+        clause: parts.join(" AND "),
+        params,
+    };
+}
+
+function getCustomWindow(query) {
+    const now = new Date();
+    const scopeType = String(query.scope_type || "last_n_days").toLowerCase();
+
+    if (scopeType === "specific_day") {
+        let selected = parseDateOnly(query.custom_date);
+
+        if (!selected) {
+            const year = Number(query.custom_year);
+            const month = Number(query.custom_month);
+            const day = Number(query.custom_day);
+            if (Number.isInteger(year) && Number.isInteger(month) && Number.isInteger(day)) {
+                selected = parseDateOnly(`${year}-${pad2(month)}-${pad2(day)}`);
+            }
+        }
+
+        const startAt = selected || startOfDay(now);
+        return {
+            scopeType,
+            startAt,
+            endAt: endOfDay(startAt),
+        };
+    }
+
+    if (scopeType === "month") {
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        const year = Number.isInteger(Number(query.custom_year)) ? Number(query.custom_year) : currentYear;
+        const month = Number.isInteger(Number(query.custom_month)) ? clamp(Number(query.custom_month), 1, 12) : currentMonth;
+        const safeYear = clamp(year, 2000, 2100);
+        const startAt = new Date(safeYear, month - 1, 1, 0, 0, 0, 0);
+        const endAt = new Date(safeYear, month, 0, 23, 59, 59, 999);
+        return { scopeType, startAt, endAt };
+    }
+
+    if (scopeType === "year") {
+        const currentYear = now.getFullYear();
+        const year = Number.isInteger(Number(query.custom_year)) ? Number(query.custom_year) : currentYear;
+        const safeYear = clamp(year, 2000, 2100);
+        const startAt = new Date(safeYear, 0, 1, 0, 0, 0, 0);
+        const endAt = new Date(safeYear, 11, 31, 23, 59, 59, 999);
+        return { scopeType, startAt, endAt };
+    }
+
+    if (scopeType === "date_range") {
+        const from = parseDateOnly(query.date_from);
+        const to = parseDateOnly(query.date_to);
+
+        if (from && to) {
+            const rangeStart = from <= to ? from : to;
+            const rangeEnd = from <= to ? to : from;
+            return {
+                scopeType,
+                startAt: rangeStart,
+                endAt: endOfDay(rangeEnd),
+            };
+        }
+
+        if (from) {
+            return {
+                scopeType,
+                startAt: from,
+                endAt: endOfDay(from),
+            };
+        }
+
+        if (to) {
+            return {
+                scopeType,
+                startAt: to,
+                endAt: endOfDay(to),
+            };
+        }
+    }
+
+    const lastNDaysRaw = Number(query.last_n_days || query.custom_days || 7);
+    const lastNDays = clamp(Number.isFinite(lastNDaysRaw) ? Math.floor(lastNDaysRaw) : 7, 1, 366);
+    const endAt = endOfDay(now);
+    const startAt = startOfDay(now);
+    startAt.setDate(startAt.getDate() - (lastNDays - 1));
+
+    return {
+        scopeType: "last_n_days",
+        startAt,
+        endAt,
+        lastNDays,
+    };
+}
+
+function getCustomConfig({ startAt, endAt, scopeType }) {
+    const daySpan = Math.max(1, Math.floor((endAt.getTime() - startAt.getTime()) / 86400000) + 1);
+    const useMonthly = scopeType === "year" || daySpan > 90;
+
+    return {
+        period: "custom",
+        labelPeriod: useMonthly ? "monthly" : "daily",
+        bucketExpr: useMonthly ? "DATE_FORMAT(%COL%, '%Y-%m')" : "DATE(%COL%)",
+    };
 }
 
 function getPeriodConfig(period) {
@@ -81,6 +280,33 @@ function makeLabels(period, points, startFrom) {
     return labels;
 }
 
+function makeLabelsFromRange({ labelPeriod, startAt, endAt, weekdayIndexes = [] }) {
+    const labels = [];
+
+    if (labelPeriod === "monthly") {
+        const cursor = new Date(startAt.getFullYear(), startAt.getMonth(), 1, 0, 0, 0, 0);
+        while (cursor <= endAt) {
+            labels.push(formatBucket(cursor, "monthly"));
+            cursor.setMonth(cursor.getMonth() + 1);
+        }
+        return labels;
+    }
+
+    const weekdaySet = new Set(weekdayIndexes);
+    const cursor = startOfDay(startAt);
+    const rangeEnd = endOfDay(endAt);
+
+    while (cursor <= rangeEnd) {
+        const weekday = (cursor.getDay() + 6) % 7;
+        if (!weekdaySet.size || weekdaySet.has(weekday)) {
+            labels.push(formatBucket(cursor, "daily"));
+        }
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return labels;
+}
+
 function toSqlDateTime(value) {
     const d = value instanceof Date ? value : new Date(value);
     const y = d.getFullYear();
@@ -90,14 +316,6 @@ function toSqlDateTime(value) {
     const mm = pad2(d.getMinutes());
     const ss = pad2(d.getSeconds());
     return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
-}
-
-function buildRangeParams(startAt, endAt, repeatCount) {
-    const params = [];
-    for (let i = 0; i < repeatCount; i += 1) {
-        params.push(startAt, endAt);
-    }
-    return params;
 }
 
 function getPeriodWindow(period) {
@@ -132,127 +350,199 @@ function getPeriodWindow(period) {
     return { startAt: start, endAt: end, labelStart: start };
 }
 
-async function getSeries({ table, dateColumn, labels, config, startAt, endAt }) {
+async function getSeries({ table, dateColumn, labels, config, startAt, endAt, weekdayIndexes = [] }) {
+    if (!labels.length) return [];
+
     const bucketExpr = config.bucketExpr.split("%COL%").join(dateColumn);
+    const filter = buildDateFilterClause(dateColumn, startAt, endAt, weekdayIndexes);
     const sql = `
     SELECT ${bucketExpr} AS bucket, COUNT(*) AS total
     FROM ${table}
-    WHERE ${dateColumn} IS NOT NULL
-      AND ${dateColumn} >= ?
-      AND ${dateColumn} <= ?
+    WHERE ${filter.clause}
     GROUP BY bucket
     ORDER BY bucket
   `;
 
-    const [rows] = await db.query(sql, [startAt, endAt]);
+    const [rows] = await db.query(sql, filter.params);
     const map = new Map(rows.map((r) => [String(r.bucket), Number(r.total)]));
     return labels.map((label) => map.get(label) || 0);
 }
 
-async function getStatusBreakdown({ table, dateExpr, startAt, endAt }) {
+async function getStatusBreakdown({ table, dateExpr, startAt, endAt, weekdayIndexes = [] }) {
+    const filter = buildDateFilterClause(dateExpr, startAt, endAt, weekdayIndexes);
     const [rows] = await db.query(
         `SELECT LOWER(COALESCE(status, 'unknown')) AS status, COUNT(*) AS total
      FROM ${table}
-     WHERE ${dateExpr} IS NOT NULL
-       AND ${dateExpr} >= ?
-       AND ${dateExpr} <= ?
+     WHERE ${filter.clause}
      GROUP BY LOWER(COALESCE(status, 'unknown'))
-     ORDER BY total DESC`, [startAt, endAt]
+     ORDER BY total DESC`, filter.params
     );
     return rows;
+}
+
+async function runCountQuery(sql, params, field = "total") {
+    const [rows] = await db.query(sql, params);
+    return Number(rows?.[0]?.[field] || 0);
 }
 
 async function getOverview(req, res) {
     try {
         const requested = String(req.query.period || "monthly").toLowerCase();
-        const config = getPeriodConfig(requested);
-        const { startAt, endAt, labelStart } = getPeriodWindow(config.period);
-        const labels = makeLabels(config.labelPeriod || config.period, config.points, labelStart || startAt);
+        const weekdayIndexes = parseWeekdayIndexes(req.query.weekdays);
+
+        let config;
+        let startAt;
+        let endAt;
+        let labels;
+        let scopeType = null;
+
+        if (requested === "custom") {
+            const customWindow = getCustomWindow(req.query || {});
+            startAt = customWindow.startAt;
+            endAt = customWindow.endAt;
+            scopeType = customWindow.scopeType;
+            config = getCustomConfig({ startAt, endAt, scopeType });
+            labels = makeLabelsFromRange({
+                labelPeriod: config.labelPeriod,
+                startAt,
+                endAt,
+                weekdayIndexes,
+            });
+        } else {
+            config = getPeriodConfig(requested);
+            const periodWindow = getPeriodWindow(config.period);
+            startAt = periodWindow.startAt;
+            endAt = periodWindow.endAt;
+            labels = makeLabels(config.labelPeriod || config.period, config.points, periodWindow.labelStart || startAt);
+        }
+
         const startAtSql = toSqlDateTime(startAt);
         const endAtSql = toSqlDateTime(endAt);
 
+        const usersFilter = buildDateFilterClause("created_at", startAtSql, endAtSql, weekdayIndexes);
+        const userMembersFilter = buildDateFilterClause("u.created_at", startAtSql, endAtSql, weekdayIndexes);
+        const metersFilter = buildDateFilterClause("installed_at", startAtSql, endAtSql, weekdayIndexes);
+        const incidentsFilter = buildDateFilterClause("reported_at", startAtSql, endAtSql, weekdayIndexes);
+        const benefitsAppliedFilter = buildDateFilterClause("applied_at", startAtSql, endAtSql, weekdayIndexes);
+        const benefitsApprovedFilter = buildDateFilterClause("COALESCE(reviewed_at, applied_at)", startAtSql, endAtSql, weekdayIndexes);
+        const seminarsFilter = buildDateFilterClause("created_at", startAtSql, endAtSql, weekdayIndexes);
+        const announcementsFilter = buildDateFilterClause("created_at", startAtSql, endAtSql, weekdayIndexes);
+
         const [
-            [summary]
-        ] = await db.query(`
-      SELECT
-                (SELECT COUNT(*) FROM users WHERE created_at IS NOT NULL AND created_at >= ? AND created_at <= ?) AS total_users,
-                (
-                        SELECT COUNT(DISTINCT m.user_id)
-                        FROM members m
-                        JOIN users u ON u.id = m.user_id
-                        WHERE u.created_at IS NOT NULL
-                            AND u.created_at >= ?
-                            AND u.created_at <= ?
-                ) AS total_members,
-                (SELECT COUNT(*) FROM meters WHERE installed_at IS NOT NULL AND installed_at >= ? AND installed_at <= ?) AS total_meters,
-                (
-                        SELECT COUNT(*)
-                        FROM meters
-                        WHERE status='active'
-                            AND installed_at IS NOT NULL
-                            AND installed_at >= ?
-                            AND installed_at <= ?
-                ) AS active_meters,
-                (SELECT COUNT(*) FROM incident_reports WHERE reported_at IS NOT NULL AND reported_at >= ? AND reported_at <= ?) AS total_incidents,
-                (
-                        SELECT COUNT(*)
-                        FROM incident_reports
-                        WHERE status='open'
-                            AND reported_at IS NOT NULL
-                            AND reported_at >= ?
-                            AND reported_at <= ?
-                ) AS open_incidents,
-                (SELECT COUNT(*) FROM benefit_applications WHERE applied_at IS NOT NULL AND applied_at >= ? AND applied_at <= ?) AS total_benefit_apps,
-                (
-                        SELECT COUNT(*)
-                        FROM benefit_applications
-                        WHERE status='pending'
-                            AND applied_at IS NOT NULL
-                            AND applied_at >= ?
-                            AND applied_at <= ?
-                ) AS pending_benefits,
-                (
-                        SELECT COUNT(DISTINCT benefit_id)
-                        FROM benefit_applications
-                        WHERE status='approved'
-                            AND COALESCE(reviewed_at, applied_at) IS NOT NULL
-                            AND COALESCE(reviewed_at, applied_at) >= ?
-                            AND COALESCE(reviewed_at, applied_at) <= ?
-                ) AS active_benefits,
-                (
-                        SELECT COUNT(*)
-                        FROM seminar_schedule_requests
-                        WHERE created_at IS NOT NULL
-                            AND created_at >= ?
-                            AND created_at <= ?
-                ) AS total_seminar_requests,
-                (
-                        SELECT COUNT(*)
-                        FROM seminar_schedule_requests
-                        WHERE status='pending'
-                            AND created_at IS NOT NULL
-                            AND created_at >= ?
-                            AND created_at <= ?
-                ) AS pending_seminar_requests,
-                (
-                        SELECT COUNT(*)
-                        FROM announcements
-                        WHERE created_at IS NOT NULL
-                            AND created_at >= ?
-                            AND created_at <= ?
-                ) AS total_announcements
-        `, buildRangeParams(startAtSql, endAtSql, 12));
+            totalUsers,
+            totalMembers,
+            totalMeters,
+            activeMeters,
+            totalIncidents,
+            openIncidents,
+            totalBenefitApps,
+            pendingBenefits,
+            activeBenefits,
+            totalSeminarRequests,
+            pendingSeminarRequests,
+            totalAnnouncements,
+        ] = await Promise.all([
+            runCountQuery(`SELECT COUNT(*) AS total_users FROM users WHERE ${usersFilter.clause}`, usersFilter.params, "total_users"),
+            runCountQuery(
+                `SELECT COUNT(DISTINCT m.user_id) AS total_members
+                 FROM members m
+                 JOIN users u ON u.id = m.user_id
+                 WHERE ${userMembersFilter.clause}`,
+                userMembersFilter.params,
+                "total_members"
+            ),
+            runCountQuery(`SELECT COUNT(*) AS total_meters FROM meters WHERE ${metersFilter.clause}`, metersFilter.params, "total_meters"),
+            runCountQuery(
+                `SELECT COUNT(*) AS active_meters
+                 FROM meters
+                 WHERE status='active' AND ${metersFilter.clause}`,
+                metersFilter.params,
+                "active_meters"
+            ),
+            runCountQuery(
+                `SELECT COUNT(*) AS total_incidents
+                 FROM incident_reports
+                 WHERE ${incidentsFilter.clause}`,
+                incidentsFilter.params,
+                "total_incidents"
+            ),
+            runCountQuery(
+                `SELECT COUNT(*) AS open_incidents
+                 FROM incident_reports
+                 WHERE status='open' AND ${incidentsFilter.clause}`,
+                incidentsFilter.params,
+                "open_incidents"
+            ),
+            runCountQuery(
+                `SELECT COUNT(*) AS total_benefit_apps
+                 FROM benefit_applications
+                 WHERE ${benefitsAppliedFilter.clause}`,
+                benefitsAppliedFilter.params,
+                "total_benefit_apps"
+            ),
+            runCountQuery(
+                `SELECT COUNT(*) AS pending_benefits
+                 FROM benefit_applications
+                 WHERE status='pending' AND ${benefitsAppliedFilter.clause}`,
+                benefitsAppliedFilter.params,
+                "pending_benefits"
+            ),
+            runCountQuery(
+                `SELECT COUNT(DISTINCT benefit_id) AS active_benefits
+                 FROM benefit_applications
+                 WHERE status='approved' AND ${benefitsApprovedFilter.clause}`,
+                benefitsApprovedFilter.params,
+                "active_benefits"
+            ),
+            runCountQuery(
+                `SELECT COUNT(*) AS total_seminar_requests
+                 FROM seminar_schedule_requests
+                 WHERE ${seminarsFilter.clause}`,
+                seminarsFilter.params,
+                "total_seminar_requests"
+            ),
+            runCountQuery(
+                `SELECT COUNT(*) AS pending_seminar_requests
+                 FROM seminar_schedule_requests
+                 WHERE status='pending' AND ${seminarsFilter.clause}`,
+                seminarsFilter.params,
+                "pending_seminar_requests"
+            ),
+            runCountQuery(
+                `SELECT COUNT(*) AS total_announcements
+                 FROM announcements
+                 WHERE ${announcementsFilter.clause}`,
+                announcementsFilter.params,
+                "total_announcements"
+            ),
+        ]);
+
+        const summary = {
+            total_users: totalUsers,
+            total_members: totalMembers,
+            total_meters: totalMeters,
+            active_meters: activeMeters,
+            total_incidents: totalIncidents,
+            open_incidents: openIncidents,
+            total_benefit_apps: totalBenefitApps,
+            pending_benefits: pendingBenefits,
+            active_benefits: activeBenefits,
+            total_seminar_requests: totalSeminarRequests,
+            pending_seminar_requests: pendingSeminarRequests,
+            total_announcements: totalAnnouncements,
+        };
 
         const [users, meters, incidents, seminars, announcements] = await Promise.all([
-            getSeries({ table: "users", dateColumn: "created_at", labels, config, startAt: startAtSql, endAt: endAtSql }),
-            getSeries({ table: "meters", dateColumn: "installed_at", labels, config, startAt: startAtSql, endAt: endAtSql }),
-            getSeries({ table: "incident_reports", dateColumn: "reported_at", labels, config, startAt: startAtSql, endAt: endAtSql }),
-            getSeries({ table: "seminar_schedule_requests", dateColumn: "created_at", labels, config, startAt: startAtSql, endAt: endAtSql }),
-            getSeries({ table: "announcements", dateColumn: "created_at", labels, config, startAt: startAtSql, endAt: endAtSql }),
+            getSeries({ table: "users", dateColumn: "created_at", labels, config, startAt: startAtSql, endAt: endAtSql, weekdayIndexes }),
+            getSeries({ table: "meters", dateColumn: "installed_at", labels, config, startAt: startAtSql, endAt: endAtSql, weekdayIndexes }),
+            getSeries({ table: "incident_reports", dateColumn: "reported_at", labels, config, startAt: startAtSql, endAt: endAtSql, weekdayIndexes }),
+            getSeries({ table: "seminar_schedule_requests", dateColumn: "created_at", labels, config, startAt: startAtSql, endAt: endAtSql, weekdayIndexes }),
+            getSeries({ table: "announcements", dateColumn: "created_at", labels, config, startAt: startAtSql, endAt: endAtSql, weekdayIndexes }),
         ]);
 
         // Benefit Distribution (pie chart data) scoped to the selected reporting window.
         const benefitApprovedDateExpr = "COALESCE(ba.reviewed_at, ba.applied_at)";
+        const benefitDistributionFilter = buildDateFilterClause(benefitApprovedDateExpr, startAtSql, endAtSql, weekdayIndexes);
         const [benefitDistribution] = await db.query(
             `
             SELECT b.id, b.name, COUNT(ba.id) AS count
@@ -260,37 +550,36 @@ async function getOverview(req, res) {
             LEFT JOIN benefit_applications ba
               ON b.id = ba.benefit_id
              AND ba.status = 'approved'
-             AND ${benefitApprovedDateExpr} IS NOT NULL
-                         AND ${benefitApprovedDateExpr} >= ?
-                         AND ${benefitApprovedDateExpr} <= ?
+             AND ${benefitDistributionFilter.clause}
             GROUP BY b.id, b.name
             ORDER BY count DESC
-                `, [startAtSql, endAtSql]
+                `, benefitDistributionFilter.params
         );
 
 
 
         // Incident Trends (bar chart data - status count per period)
         const incidentBucketExpr = config.bucketExpr.split("%COL%").join("reported_at");
+        const incidentTrendFilter = buildDateFilterClause("reported_at", startAtSql, endAtSql, weekdayIndexes);
         const [incidentTrends] = await db.query(`
             SELECT 
                 ${incidentBucketExpr} AS period,
                 status,
                 COUNT(*) AS count
             FROM incident_reports
-            WHERE reported_at IS NOT NULL
-              AND reported_at >= ?
-              AND reported_at <= ?
+            WHERE ${incidentTrendFilter.clause}
             GROUP BY period, status
             ORDER BY period, status
-        `, [startAtSql, endAtSql]);
+        `, incidentTrendFilter.params);
 
         const [incidentStatus, meterStatus, benefitStatus, seminarStatus] = await Promise.all([
-            getStatusBreakdown({ table: "incident_reports", dateExpr: "reported_at", startAt: startAtSql, endAt: endAtSql }),
-            getStatusBreakdown({ table: "meters", dateExpr: "installed_at", startAt: startAtSql, endAt: endAtSql }),
-            getStatusBreakdown({ table: "benefit_applications", dateExpr: "applied_at", startAt: startAtSql, endAt: endAtSql }),
-            getStatusBreakdown({ table: "seminar_schedule_requests", dateExpr: "created_at", startAt: startAtSql, endAt: endAtSql }),
+            getStatusBreakdown({ table: "incident_reports", dateExpr: "reported_at", startAt: startAtSql, endAt: endAtSql, weekdayIndexes }),
+            getStatusBreakdown({ table: "meters", dateExpr: "installed_at", startAt: startAtSql, endAt: endAtSql, weekdayIndexes }),
+            getStatusBreakdown({ table: "benefit_applications", dateExpr: "applied_at", startAt: startAtSql, endAt: endAtSql, weekdayIndexes }),
+            getStatusBreakdown({ table: "seminar_schedule_requests", dateExpr: "created_at", startAt: startAtSql, endAt: endAtSql, weekdayIndexes }),
         ]);
+
+        const recentActivitiesFilter = buildDateFilterClause("happened_at", startAtSql, endAtSql, weekdayIndexes);
 
         const [recentActivities] = await db.query(`
       SELECT *
@@ -329,14 +618,20 @@ async function getOverview(req, res) {
         FROM users
         WHERE created_at IS NOT NULL
       ) logs
-            WHERE happened_at >= ?
-                AND happened_at <= ?
+            WHERE ${recentActivitiesFilter.clause}
       ORDER BY happened_at DESC
       LIMIT 12
-        `, [startAtSql, endAtSql]);
+        `, recentActivitiesFilter.params);
 
         res.json({
             period: config.period,
+            labelPeriod: config.labelPeriod,
+            scopeType,
+            range: {
+                startAt: startAtSql,
+                endAt: endAtSql,
+            },
+            weekdays: weekdayIndexes,
             labels,
             summary,
             trends: {

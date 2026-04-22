@@ -158,7 +158,7 @@ const menu = [
   { label: "Benefit Approvals", to: "/benefit-approvals", tone: "mint", iconPaths: ["M4 12L9 17L20 6"] },
   { label: "Billing Rates", to: "/billing-rates", tone: "emerald", iconPaths: ["M4 7H20V17H4V7Z", "M8 12H16", "M12 10V14"] },
   {
-    label: "Reports",
+    label: "Reports & Analytics",
     to: "/reports",
     tone: "slate",
     iconPaths: ["M7 3H14L19 8V21H7V3Z", "M14 3V8H19", "M10 13H16", "M10 17H16"]
@@ -325,17 +325,19 @@ onBeforeUnmount(() => {
 }
 
 .nav-icon {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--tone);
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--tone) 12%, #ffffff);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 28%, #d6e0ea);
-  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  transition: color 0.2s ease;
   overflow: visible;
   position: relative;
+  flex-shrink: 0;
 }
 
 .nav-notification-badge {
@@ -358,22 +360,19 @@ onBeforeUnmount(() => {
 }
 
 .nav-icon::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--tone) 14%, transparent), transparent 65%);
-  opacity: 0.85;
+  content: none;
 }
 
 .nav-icon-svg {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.5));
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
 
 .nav-icon-svg path {
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: 2.05;
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
@@ -402,18 +401,30 @@ onBeforeUnmount(() => {
 }
 
 .nav-link-active .nav-icon {
-  background: color-mix(in srgb, var(--tone) 18%, #ffffff);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--tone) 22%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--tone) 32%, #d6e0ea);
+  background: transparent;
+  box-shadow: none;
+}
+
+.nav-link-active .nav-icon-svg {
   animation: navIconPulse 2.8s ease-in-out infinite;
+  filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--tone) 28%, transparent));
+}
+
+.nav-link-active .nav-icon-svg path {
+  stroke-width: 2.2;
 }
 
 .nav-link:hover .nav-icon {
-  transform: translateY(-1px) scale(1.03);
-  background: color-mix(in srgb, var(--tone) 16%, #ffffff);
+  background: transparent;
 }
 
 .nav-link:hover .nav-icon-svg path {
-  stroke-width: 2;
+  stroke-width: 2.3;
+}
+
+.nav-link:hover .nav-icon-svg {
+  transform: translateY(-1px) scale(1.08);
+  filter: drop-shadow(0 6px 12px color-mix(in srgb, var(--tone) 24%, transparent));
 }
 
 .tone-teal { --tone: #0f8b6f; }
@@ -432,10 +443,10 @@ onBeforeUnmount(() => {
 @keyframes navIconPulse {
   0%,
   100% {
-    transform: scale(1);
+    transform: translateY(0) scale(1);
   }
   50% {
-    transform: scale(1.04);
+    transform: translateY(-1px) scale(1.08);
   }
 }
 

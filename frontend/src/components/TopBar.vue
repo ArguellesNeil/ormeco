@@ -17,22 +17,44 @@
         <span class="user-name">{{ auth.user.full_name }}</span>
       </div>
 
-      <button @click="logout" class="logout-btn">
+      <button type="button" @click="openLogoutConfirm" class="logout-btn">
         Logout
       </button>
     </div>
   </header>
+
+  <div
+    v-if="showLogoutConfirm"
+    class="modal-overlay logout-confirm-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Logout confirmation"
+    @click.self="closeLogoutConfirm"
+  >
+    <div class="modal-panel glass-soft logout-confirm-panel">
+      <span class="logout-confirm-chip">Session</span>
+      <h3 class="modal-title logout-confirm-title">Are you sure you want to logout?</h3>
+      <p class="logout-confirm-message">
+        You will need to sign in again to continue managing the system.
+      </p>
+      <div class="modal-actions logout-confirm-actions">
+        <button type="button" class="btn btn-secondary" @click="closeLogoutConfirm">No</button>
+        <button type="button" class="btn btn-primary logout-confirm-yes" @click="confirmLogout">Yes</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { useAuthStore } from "../store/auth";
 import { useRouter } from "vue-router";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 
 const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
+const showLogoutConfirm = ref(false);
 
 const pageTitle = computed(() => {
   const map = {
@@ -61,7 +83,16 @@ const getInitials = (name) => {
   return name.slice(0, 2).toUpperCase();
 };
 
-const logout = () => {
+const openLogoutConfirm = () => {
+  showLogoutConfirm.value = true;
+};
+
+const closeLogoutConfirm = () => {
+  showLogoutConfirm.value = false;
+};
+
+const confirmLogout = () => {
+  showLogoutConfirm.value = false;
   auth.logout();
   router.push("/login");
 };
@@ -182,6 +213,67 @@ const logout = () => {
 
 .logout-btn:active {
   background: #ebf3fb;
+}
+
+.logout-confirm-overlay {
+  z-index: 1600;
+}
+
+.logout-confirm-panel {
+  width: min(460px, 92vw);
+  border-radius: 18px;
+}
+
+.logout-confirm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid #bde5cd;
+  background: #e9f9f0;
+  color: #1c7f53;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.logout-confirm-title {
+  margin: 14px 0 8px 0;
+  font-size: 22px;
+}
+
+.logout-confirm-message {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.logout-confirm-actions {
+  justify-content: stretch;
+}
+
+.logout-confirm-actions .btn {
+  flex: 1;
+  min-height: 42px;
+}
+
+.logout-confirm-yes {
+  box-shadow: 0 10px 22px rgba(15, 139, 111, 0.26);
+}
+
+.logout-confirm-yes:hover {
+  box-shadow: 0 13px 26px rgba(15, 139, 111, 0.33);
+}
+
+:global(html.ormeco-dark) .logout-confirm-overlay {
+  background: rgba(4, 10, 20, 0.48);
+}
+
+:global(html.ormeco-dark) .logout-confirm-chip {
+  color: #74e8c9;
+  background: rgba(41, 201, 163, 0.16);
+  border-color: rgba(41, 201, 163, 0.42);
 }
 
 @keyframes ping {

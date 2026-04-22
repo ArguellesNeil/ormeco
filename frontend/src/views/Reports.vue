@@ -8,6 +8,7 @@
         </div>
         <h2 class="page-title">System Reports</h2>
         <p class="page-subtitle">Monitor system activity daily, weekly, monthly, and yearly. Export a clean executive PDF anytime.</p>
+        <p v-if="period === 'custom' && customScopeSummary" class="custom-range-meta">Current custom range: {{ customScopeSummary }}</p>
       </div>
 
       <div class="page-actions report-actions">
@@ -29,6 +30,104 @@
         </button>
       </div>
     </div>
+
+    <section v-if="period === 'custom'" class="card-surface custom-scope-panel reveal">
+      <div class="custom-head">
+        <h3>Custom Report Scope</h3>
+        <span>Select exactly what day/month/year or weekday range should appear in this report.</span>
+      </div>
+
+      <div class="custom-grid">
+        <label class="custom-field">
+          <span>Scope Type</span>
+          <select v-model="customFilters.scope_type">
+            <option value="last_n_days">Last N Days</option>
+            <option value="specific_day">Specific Day</option>
+            <option value="month">Specific Month</option>
+            <option value="year">Specific Year</option>
+            <option value="date_range">Custom Date Range</option>
+          </select>
+        </label>
+
+        <label v-if="customFilters.scope_type === 'last_n_days'" class="custom-field">
+          <span>Last N Days</span>
+          <input v-model.number="customFilters.last_n_days" type="number" min="1" max="366" />
+        </label>
+
+        <template v-if="customFilters.scope_type === 'specific_day'">
+          <label class="custom-field">
+            <span>Day</span>
+            <select v-model.number="customFilters.day">
+              <option v-for="day in dayOptions" :key="`day-${day}`" :value="day">{{ day }}</option>
+            </select>
+          </label>
+
+          <label class="custom-field">
+            <span>Month</span>
+            <select v-model.number="customFilters.month">
+              <option v-for="month in monthOptions" :key="`month-${month.value}`" :value="month.value">{{ month.label }}</option>
+            </select>
+          </label>
+
+          <label class="custom-field">
+            <span>Year</span>
+            <select v-model.number="customFilters.year">
+              <option v-for="year in yearOptions" :key="`year-${year}`" :value="year">{{ year }}</option>
+            </select>
+          </label>
+        </template>
+
+        <template v-if="customFilters.scope_type === 'month'">
+          <label class="custom-field">
+            <span>Month</span>
+            <select v-model.number="customFilters.month">
+              <option v-for="month in monthOptions" :key="`scope-month-${month.value}`" :value="month.value">{{ month.label }}</option>
+            </select>
+          </label>
+
+          <label class="custom-field">
+            <span>Year</span>
+            <select v-model.number="customFilters.year">
+              <option v-for="year in yearOptions" :key="`scope-year-${year}`" :value="year">{{ year }}</option>
+            </select>
+          </label>
+        </template>
+
+        <label v-if="customFilters.scope_type === 'year'" class="custom-field">
+          <span>Year</span>
+          <select v-model.number="customFilters.year">
+            <option v-for="year in yearOptions" :key="`single-year-${year}`" :value="year">{{ year }}</option>
+          </select>
+        </label>
+
+        <template v-if="customFilters.scope_type === 'date_range'">
+          <label class="custom-field">
+            <span>Date From</span>
+            <input v-model="customFilters.date_from" type="date" />
+          </label>
+
+          <label class="custom-field">
+            <span>Date To</span>
+            <input v-model="customFilters.date_to" type="date" />
+          </label>
+        </template>
+      </div>
+
+      <div class="custom-weekdays">
+        <p>Weekday Filter (optional)</p>
+        <div class="weekday-chip-group">
+          <label v-for="weekday in weekdayOptions" :key="`weekday-${weekday.value}`" class="weekday-chip">
+            <input v-model="customFilters.weekdays" type="checkbox" :value="String(weekday.value)" />
+            <span>{{ weekday.label }}</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="custom-actions">
+        <button type="button" class="btn btn-secondary" @click="clearWeekdays">Clear Weekdays</button>
+        <button type="button" class="btn btn-primary" @click="applyCustomScope" :disabled="loading">Apply Custom Scope</button>
+      </div>
+    </section>
 
     <div v-if="loading" class="card-surface loading-card">Loading report data...</div>
     <div v-else-if="error" class="card-surface error-card">{{ error }}</div>
@@ -340,7 +439,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
@@ -363,6 +462,9 @@ const tooltip = ref({
   value: "",
 });
 
+const now = new Date();
+const currentYear = now.getFullYear();
+
 const chartBounds = {
   left: 52,
   right: 950,
@@ -375,11 +477,155 @@ const periods = [
   { label: "Weekly", value: "weekly" },
   { label: "Monthly", value: "monthly" },
   { label: "Yearly", value: "yearly" },
+  { label: "Custom", value: "custom" },
 ];
+
+const monthOptions = [
+  { value: 1, label: "January" },
+  { value: 2, label: "February" },
+  { value: 3, label: "March" },
+  { value: 4, label: "April" },
+  { value: 5, label: "May" },
+  { value: 6, label: "June" },
+  { value: 7, label: "July" },
+  { value: 8, label: "August" },
+  { value: 9, label: "September" },
+  { value: 10, label: "October" },
+  { value: 11, label: "November" },
+  { value: 12, label: "December" },
+];
+
+const weekdayOptions = [
+  { value: 0, label: "Monday" },
+  { value: 1, label: "Tuesday" },
+  { value: 2, label: "Wednesday" },
+  { value: 3, label: "Thursday" },
+  { value: 4, label: "Friday" },
+  { value: 5, label: "Saturday" },
+  { value: 6, label: "Sunday" },
+];
+
+const customFilters = reactive({
+  scope_type: "last_n_days",
+  last_n_days: 7,
+  day: now.getDate(),
+  month: now.getMonth() + 1,
+  year: currentYear,
+  date_from: "",
+  date_to: "",
+  weekdays: [],
+});
+
+const yearOptions = computed(() => {
+  const list = [];
+  for (let y = currentYear + 1; y >= currentYear - 10; y -= 1) {
+    list.push(y);
+  }
+  return list;
+});
+
+const dayOptions = computed(() => {
+  const safeYear = Number(customFilters.year) || currentYear;
+  const safeMonth = Number(customFilters.month) || 1;
+  const maxDay = new Date(safeYear, safeMonth, 0).getDate();
+  return Array.from({ length: maxDay }, (_unused, idx) => idx + 1);
+});
+
+watch(dayOptions, (nextDays) => {
+  if (!nextDays.length) return;
+  const selectedDay = Number(customFilters.day);
+  if (!nextDays.includes(selectedDay)) {
+    customFilters.day = nextDays[nextDays.length - 1];
+  }
+});
 
 const periodLabel = computed(() => {
   const found = periods.find((p) => p.value === period.value);
   return found ? found.label : "Monthly";
+});
+
+const parseReportDate = (value) => {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  let d = new Date(normalized);
+  if (!Number.isNaN(d.getTime())) return d;
+
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) {
+    d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+
+  return null;
+};
+
+const formatDateOnly = (value) => {
+  const d = parseReportDate(value);
+  if (!d) return "-";
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  });
+};
+
+const formatMonthYear = (value) => {
+  const d = parseReportDate(value);
+  if (!d) return "-";
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+  });
+};
+
+const selectedWeekdayLabels = computed(() => {
+  const source = Array.isArray(report.value?.weekdays) && report.value.weekdays.length
+    ? report.value.weekdays
+    : customFilters.weekdays;
+
+  const unique = Array.from(new Set(source.map((item) => String(item).trim())))
+    .filter((item) => /^\d$/.test(item))
+    .sort((a, b) => Number(a) - Number(b));
+
+  return unique
+    .map((item) => weekdayOptions.find((weekday) => String(weekday.value) === item)?.label)
+    .filter(Boolean);
+});
+
+const customScopeSummary = computed(() => {
+  if (period.value !== "custom") return "";
+
+  const scopeType = String(report.value?.scopeType || customFilters.scope_type || "last_n_days").toLowerCase();
+  const startAt = report.value?.range?.startAt;
+  const endAt = report.value?.range?.endAt;
+
+  let base = "";
+  if (scopeType === "specific_day") {
+    base = formatDateOnly(startAt);
+  } else if (scopeType === "month") {
+    base = formatMonthYear(startAt);
+  } else if (scopeType === "year") {
+    const d = parseReportDate(startAt);
+    base = d ? String(d.getFullYear()) : String(customFilters.year || currentYear);
+  } else if (scopeType === "date_range") {
+    base = `${formatDateOnly(startAt)} to ${formatDateOnly(endAt)}`;
+  } else {
+    if (startAt && endAt) {
+      base = `${formatDateOnly(startAt)} to ${formatDateOnly(endAt)}`;
+    } else {
+      const fallbackDays = Math.max(1, Number(customFilters.last_n_days) || 1);
+      base = `Last ${fallbackDays} days`;
+    }
+  }
+
+  if (selectedWeekdayLabels.value.length) {
+    base += ` • Weekdays: ${selectedWeekdayLabels.value.join(", ")}`;
+  }
+
+  return base;
 });
 
 const summaryCards = computed(() => {
@@ -681,8 +927,42 @@ const loadReport = async () => {
   loading.value = true;
   error.value = "";
   try {
+    const params = { period: period.value };
+
+    if (period.value === "custom") {
+      params.scope_type = customFilters.scope_type;
+
+      if (customFilters.scope_type === "last_n_days") {
+        params.last_n_days = Math.max(1, Number(customFilters.last_n_days) || 1);
+      }
+
+      if (customFilters.scope_type === "specific_day") {
+        params.custom_day = Number(customFilters.day) || now.getDate();
+        params.custom_month = Number(customFilters.month) || now.getMonth() + 1;
+        params.custom_year = Number(customFilters.year) || currentYear;
+      }
+
+      if (customFilters.scope_type === "month") {
+        params.custom_month = Number(customFilters.month) || now.getMonth() + 1;
+        params.custom_year = Number(customFilters.year) || currentYear;
+      }
+
+      if (customFilters.scope_type === "year") {
+        params.custom_year = Number(customFilters.year) || currentYear;
+      }
+
+      if (customFilters.scope_type === "date_range") {
+        if (customFilters.date_from) params.date_from = customFilters.date_from;
+        if (customFilters.date_to) params.date_to = customFilters.date_to;
+      }
+
+      if (Array.isArray(customFilters.weekdays) && customFilters.weekdays.length) {
+        params.weekdays = customFilters.weekdays.join(",");
+      }
+    }
+
     const { data } = await api.get("/reports/overview", {
-      params: { period: period.value },
+      params,
     });
     report.value = data;
   } catch (err) {
@@ -697,6 +977,17 @@ const changePeriod = async (next) => {
   if (period.value === next) return;
   period.value = next;
   await loadReport();
+};
+
+const applyCustomScope = async () => {
+  if (period.value !== "custom") {
+    period.value = "custom";
+  }
+  await loadReport();
+};
+
+const clearWeekdays = () => {
+  customFilters.weekdays = [];
 };
 
 const exportPdf = async () => {
@@ -817,6 +1108,14 @@ const exportPdf = async () => {
   doc.text(`Period: ${periodLabel.value}`, marginX, cursorY);
   doc.text(`Generated: ${createdAtLabel}`, pageW - marginX - 175, cursorY);
   cursorY += 12;
+
+  if (period.value === "custom" && customScopeSummary.value) {
+    doc.setFontSize(9);
+    doc.setTextColor(...palette.muted);
+    const scopeLines = doc.splitTextToSize(`Custom Scope: ${customScopeSummary.value}`, contentWidth);
+    doc.text(scopeLines, marginX, cursorY);
+    cursorY += scopeLines.length * 10 + 2;
+  }
 
   doc.setDrawColor(...palette.line);
   doc.line(marginX, cursorY, marginX + contentWidth, cursorY);
@@ -1351,6 +1650,13 @@ onMounted(loadReport);
   font-weight: 700;
 }
 
+.custom-range-meta {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4f7f;
+}
+
 .report-actions {
   display: flex;
   align-items: center;
@@ -1377,6 +1683,126 @@ onMounted(loadReport);
   border-color: #aee3d4;
   color: #116351;
   box-shadow: 0 6px 14px rgba(15, 139, 111, 0.16);
+}
+
+.custom-scope-panel {
+  border: 1px solid var(--rp-line);
+  border-radius: 16px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 139, 111, 0.1), transparent 36%),
+    radial-gradient(circle at 100% 100%, rgba(47, 110, 168, 0.08), transparent 34%),
+    #ffffff;
+}
+
+.custom-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.custom-head h3 {
+  margin: 0;
+  color: #10233e;
+}
+
+.custom-head span {
+  color: var(--rp-text-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.custom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.custom-field {
+  display: grid;
+  gap: 6px;
+}
+
+.custom-field span {
+  color: var(--rp-text-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.custom-field input,
+.custom-field select {
+  width: 100%;
+  border: 1px solid var(--rp-line);
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 14px;
+  color: #10233e;
+  background: #ffffff;
+}
+
+.custom-field input:focus,
+.custom-field select:focus {
+  outline: none;
+  border-color: #7eb2db;
+  box-shadow: 0 0 0 3px rgba(47, 110, 168, 0.16);
+}
+
+.custom-weekdays {
+  margin-top: 12px;
+}
+
+.custom-weekdays p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rp-text-soft);
+}
+
+.weekday-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.weekday-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.weekday-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.weekday-chip span {
+  border: 1px solid #c8d9ec;
+  background: #f4f9ff;
+  color: #23415f;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.weekday-chip input:checked + span {
+  background: linear-gradient(135deg, #daf4ed, #f1fbf8);
+  border-color: #9edbc8;
+  color: #0f6c57;
+  box-shadow: 0 4px 10px rgba(15, 139, 111, 0.16);
+}
+
+.custom-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .kpi-grid {
@@ -1885,6 +2311,18 @@ onMounted(loadReport);
     grid-template-columns: 1fr;
   }
 
+  .custom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .custom-actions {
+    justify-content: stretch;
+  }
+
+  .custom-actions .btn {
+    flex: 1;
+  }
+
   .analytics-layout {
     grid-template-columns: 1fr;
   }
@@ -1980,8 +2418,39 @@ onMounted(loadReport);
   border-color: rgba(41, 201, 163, 0.38);
 }
 
+:global(html.ormeco-dark) .reports-page .custom-range-meta {
+  color: #8fc5f3;
+}
+
 :global(html.ormeco-dark) .reports-page .period-switch {
   background: #0f1d31;
+}
+
+:global(html.ormeco-dark) .reports-page .custom-scope-panel {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(41, 201, 163, 0.14), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(92, 154, 226, 0.1), transparent 36%),
+    #0f1d31;
+  border-color: #33506f;
+}
+
+:global(html.ormeco-dark) .reports-page .custom-field input,
+:global(html.ormeco-dark) .reports-page .custom-field select {
+  background: #12253c;
+  color: #e9f3ff;
+  border-color: #3a5a7c;
+}
+
+:global(html.ormeco-dark) .reports-page .weekday-chip span {
+  background: #13263d;
+  border-color: #3b5f84;
+  color: #c9dcef;
+}
+
+:global(html.ormeco-dark) .reports-page .weekday-chip input:checked + span {
+  background: rgba(41, 201, 163, 0.18);
+  border-color: rgba(41, 201, 163, 0.5);
+  color: #7bead0;
 }
 
 :global(html.ormeco-dark) .reports-page .period-switch .btn.active {
