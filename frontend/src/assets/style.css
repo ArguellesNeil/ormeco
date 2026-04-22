@@ -583,28 +583,39 @@ html.ormeco-dark .modal-overlay {
 }
 
 html.ormeco-dark .login-page {
-    background: #0a1524;
-}
-
-html.ormeco-dark .login-brand-panel h1,
-html.ormeco-dark .login-brand-panel p,
-html.ormeco-dark .login-card h2 {
-    color: #ecf4ff;
+    background: inherit;
 }
 
 html.ormeco-dark .login-subtitle {
-    color: #a6bed8;
+    color: #5f738f;
 }
 
 html.ormeco-dark .login-card {
-    background: #0f1d31;
-    border-color: var(--line);
-    box-shadow: 0 24px 50px rgba(3, 8, 18, 0.54);
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(220, 229, 239, 0.74);
+    box-shadow: 0 24px 50px rgba(6, 20, 16, 0.34);
 }
 
 html.ormeco-dark .brand-pill {
-    background: rgba(41, 201, 163, 0.18);
-    color: #79e9cd;
+    background: rgba(223, 245, 239, 0.18);
+    color: #e8fff8;
+    border-color: rgba(223, 245, 239, 0.38);
+}
+
+html.ormeco-dark .login-page .form-label,
+html.ormeco-dark .login-page .login-card h2 {
+    color: #1b3555 !important;
+}
+
+html.ormeco-dark .login-page .input,
+html.ormeco-dark .login-page input {
+    background: #ffffff;
+    color: #1c3555;
+    border-color: #d3dfed;
+}
+
+html.ormeco-dark .login-page input::placeholder {
+    color: #7a8da8;
 }
 
 html.ormeco-dark,
@@ -686,7 +697,7 @@ html.ormeco-dark .dashboard .announcement-meta,
 html.ormeco-dark .dashboard .announcement-body,
 html.ormeco-dark .dashboard .table th,
 html.ormeco-dark .dashboard .empty-state p {
-    color: #afc5dd !important;
+    color: #c7dbee !important;
 }
 
 html.ormeco-dark .dashboard .chart-center,
@@ -697,6 +708,14 @@ html.ormeco-dark .dashboard .card-icon,
 html.ormeco-dark .dashboard .kpi-trend {
     background: #122337 !important;
     border-color: #35516f !important;
+}
+
+html.ormeco-dark .dashboard .hero-pill {
+    color: #e7f4ff !important;
+}
+
+html.ormeco-dark .dashboard .hero-pill:hover {
+    color: #ffffff !important;
 }
 
 html.ormeco-dark .dashboard .table th,
@@ -766,6 +785,71 @@ html.ormeco-dark .reports-page .benefit-name,
 html.ormeco-dark .reports-page .axis-label,
 html.ormeco-dark .reports-page .empty-state {
     color: #afc5dd !important;
+}
+
+
+/* Ultra-specific fallback for Notifications table readability */
+
+html.ormeco-dark body .notifications-page .table-meta {
+    background: #1a2b40 !important;
+    border-bottom-color: #3a5675 !important;
+}
+
+html.ormeco-dark body .notifications-page .table-title {
+    color: #ffffff !important;
+}
+
+html.ormeco-dark body .notifications-page .table-count {
+    background: #22374f !important;
+    border-color: #4c6988 !important;
+    color: #d9e9f9 !important;
+}
+
+html.ormeco-dark body .notifications-page .status-select,
+html.ormeco-dark body .notifications-page .search-input {
+    background: #1a2d43 !important;
+    border-color: #46627f !important;
+    color: #e7f2ff !important;
+}
+
+html.ormeco-dark body .notifications-page .status-select::placeholder,
+html.ormeco-dark body .notifications-page .search-input::placeholder {
+    color: #9eb8d3 !important;
+}
+
+html.ormeco-dark body .notifications-page .type-filters .btn {
+    background: #13263d !important;
+    border-color: #35506f !important;
+    color: #dcecff !important;
+}
+
+html.ormeco-dark body .notifications-page .type-filters .btn.active {
+    background: #1f3d3a !important;
+    border-color: #3f706a !important;
+    color: #9ce7d5 !important;
+}
+
+html.ormeco-dark body .notifications-page .data-table tbody tr td,
+html.ormeco-dark body .notifications-page .data-table tbody tr:nth-child(odd) td,
+html.ormeco-dark body .notifications-page .data-table tbody tr:nth-child(even) td {
+    color: #ecf5ff !important;
+}
+
+html.ormeco-dark body .notifications-page .data-table tbody tr td .title-main {
+    color: #f3f9ff !important;
+}
+
+html.ormeco-dark body .notifications-page .data-table tbody tr td .title-meta {
+    color: #c0d4e9 !important;
+}
+
+html.ormeco-dark body .notifications-page .data-table tbody tr td .title-meta.unread {
+    color: #a9d8ff !important;
+}
+
+html.ormeco-dark body .notifications-page .data-table tbody tr td .message-cell,
+html.ormeco-dark body .notifications-page .data-table tbody tr td .created-cell {
+    color: #dcecff !important;
 }
 
 

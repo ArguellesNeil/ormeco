@@ -13,7 +13,11 @@
       idKey="id"
       @edit="openEdit"
       @delete="remove"
-    />
+    >
+      <template #cell-effective_to="{ row }">
+        {{ formatDateOnly(row.effective_to) }}
+      </template>
+    </DataTable>
 
     <div v-if="showModal" class="modal-overlay">
       <div class="modal-panel">
@@ -72,8 +76,22 @@ const form = ref({
 const columns = [
   { key: "id", label: "ID" },
   { key: "rate_per_kwh", label: "Rate/kWh" },
+  { key: "effective_to", label: "Affected Until" },
   { key: "description", label: "Description" }
 ];
+
+const formatDateOnly = (value) => {
+  if (!value) return "No end date";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(0, 10);
+  }
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit"
+  });
+};
 
 const load = async () => {
   const { data } = await api.get("/billing/rates");

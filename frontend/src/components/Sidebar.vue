@@ -1,9 +1,15 @@
 <template>
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-mark" aria-hidden="true">OE</div>
+      <div class="brand-mark">
+        <img
+          src="/ormeconnect-logo.jpg"
+          alt="ORMEConnect system logo"
+          class="brand-logo"
+        />
+      </div>
       <div class="brand-copy">
-        <span class="brand-name">ORMECO</span>
+        <span class="brand-name">ORMEConnect</span>
         <p class="brand-sub">Admin Console</p>
       </div>
     </div>
@@ -225,35 +231,39 @@ onBeforeUnmount(() => {
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid #d1deec;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
-  box-shadow: 0 8px 18px rgba(16, 35, 62, 0.07);
-  min-height: 58px;
+  gap: 14px;
+  padding: 11px 13px;
+  border: 1px solid #c8d8ea;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f6f8fb 0%, #f0f4f8 100%);
+  box-shadow: 0 10px 22px rgba(16, 35, 62, 0.08);
+  min-height: 72px;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .brand:hover {
   transform: translateY(-1px);
-  border-color: #b8cbe3;
-  box-shadow: 0 12px 24px rgba(16, 35, 62, 0.1);
+  border-color: #a9c2de;
+  box-shadow: 0 14px 26px rgba(16, 35, 62, 0.11);
 }
 
 .brand-mark {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #0f8b6f 0%, #13a57f 100%);
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  box-shadow: 0 8px 14px rgba(15, 139, 111, 0.24);
+  background: #ffffff;
+  border: 1px solid #d7e2ee;
+  box-shadow: 0 10px 18px rgba(16, 35, 62, 0.13);
   flex-shrink: 0;
+}
+
+.brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  object-fit: cover;
 }
 
 .brand-copy {
@@ -262,18 +272,18 @@ onBeforeUnmount(() => {
 
 .brand-name {
   display: block;
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 800;
-  letter-spacing: 0.12em;
-  color: #314b69;
+  letter-spacing: 0.02em;
+  color: #2e4f73;
   line-height: 1.2;
   white-space: nowrap;
 }
 
 .brand-sub {
-  margin: 2px 0 0 0;
-  font-size: 12px;
-  color: #5d7694;
+  margin: 1px 0 0 0;
+  font-size: 14px;
+  color: #47678a;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;

@@ -4,7 +4,7 @@
       <div class="brand-pill">ORMECO ADMIN</div>
       <h1>Power your operations with clarity.</h1>
       <p>
-        Monitor users, meters, incidents, benefits, and billing from one secure,
+        Monitor users, meters, incidents, benefits, seminar schedulings, and billing rates from one secure,
         modern dashboard.
       </p>
     </div>
@@ -88,9 +88,8 @@ const submit = async () => {
   grid-template-columns: 1.2fr 1fr;
   align-items: stretch;
   background:
-    radial-gradient(circle at 20% 20%, #dff5ef 0%, transparent 42%),
-    radial-gradient(circle at 100% 0%, #ffe9d8 0%, transparent 34%),
-    #eef4fa;
+    linear-gradient(115deg, rgba(4, 25, 21, 0.68) 0%, rgba(5, 22, 17, 0.45) 45%, rgba(3, 12, 10, 0.74) 100%),
+    url("/login-bg.jpg") center center / cover no-repeat;
 }
 
 .login-brand-panel {
@@ -98,15 +97,18 @@ const submit = async () => {
   flex-direction: column;
   justify-content: center;
   padding: 52px;
-  color: #10233e;
+  color: #f3fbf8;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .brand-pill {
   align-self: flex-start;
   padding: 6px 12px;
   border-radius: 999px;
-  background: #dff5ef;
-  color: #0b6a55;
+  background: rgba(223, 245, 239, 0.18);
+  color: #e8fff8;
+  border: 1px solid rgba(223, 245, 239, 0.38);
+  backdrop-filter: blur(4px);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -121,7 +123,7 @@ const submit = async () => {
 
 .login-brand-panel p {
   margin: 16px 0 0 0;
-  color: #4d6380;
+  color: rgba(235, 247, 255, 0.92);
   max-width: 480px;
   font-size: 16px;
 }
@@ -129,10 +131,11 @@ const submit = async () => {
 .login-card {
   margin: auto;
   width: min(420px, calc(100% - 32px));
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid #dce5ef;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(220, 229, 239, 0.74);
   border-radius: 20px;
-  box-shadow: 0 24px 50px rgba(16, 35, 62, 0.16);
+  box-shadow: 0 24px 50px rgba(6, 20, 16, 0.34);
+  backdrop-filter: blur(6px);
   padding: 30px;
 }
 
@@ -160,10 +163,41 @@ const submit = async () => {
   font-weight: 700;
 }
 
+:global(html.ormeco-dark) .login-page {
+  background:
+    linear-gradient(115deg, rgba(4, 25, 21, 0.68) 0%, rgba(5, 22, 17, 0.45) 45%, rgba(3, 12, 10, 0.74) 100%),
+    url("/login-bg.jpg") center center / cover no-repeat !important;
+}
+
+:global(html.ormeco-dark) .login-card {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(220, 229, 239, 0.74) !important;
+  box-shadow: 0 24px 50px rgba(6, 20, 16, 0.34) !important;
+  color: #1b3555 !important;
+}
+
+:global(html.ormeco-dark) .login-card h2,
+:global(html.ormeco-dark) .login-subtitle,
+:global(html.ormeco-dark) .login-page .form-label {
+  color: #1b3555 !important;
+}
+
+:global(html.ormeco-dark) .login-page .input,
+:global(html.ormeco-dark) .login-page input {
+  background: #ffffff !important;
+  color: #1c3555 !important;
+  border-color: #d3dfed !important;
+}
+
+:global(html.ormeco-dark) .login-page input::placeholder {
+  color: #7a8da8 !important;
+}
+
 @media (max-width: 950px) {
   .login-page {
     grid-template-columns: 1fr;
     padding: 16px;
+    background-position: 52% center;
   }
 
   .login-brand-panel {

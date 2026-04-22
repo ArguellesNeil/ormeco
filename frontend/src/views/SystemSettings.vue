@@ -329,7 +329,7 @@
       </div>
 
       <div class="table-wrap audit-table-wrap">
-        <table class="data-table">
+        <table class="data-table audit-data-table">
           <thead>
             <tr>
               <th>When</th>
@@ -353,7 +353,9 @@
                 </span>
               </td>
               <td class="audit-action">{{ item.action }}</td>
-              <td class="audit-details">{{ item.details || "-" }}</td>
+              <td class="audit-details">
+                <div class="audit-details-text">{{ item.details || "-" }}</div>
+              </td>
               <td><span class="audit-ip">{{ item.ip_address || "-" }}</span></td>
             </tr>
           </tbody>
@@ -1090,6 +1092,35 @@ onMounted(loadAll);
 .audit-table-wrap {
   border-radius: 14px;
   border-color: color-mix(in srgb, var(--border) 82%, #abc1da 18%);
+  max-height: min(62vh, 560px);
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
+}
+
+.audit-table-wrap::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.audit-table-wrap::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 26%, transparent 74%);
+}
+
+.audit-table-wrap::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--bg-soft) 90%, #dbe8f6 10%);
+}
+
+.audit-data-table {
+  min-width: 980px;
+}
+
+.audit-data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: color-mix(in srgb, var(--bg-elev) 92%, #eef5ff 8%);
+  box-shadow: inset 0 -1px 0 var(--border);
 }
 
 .audit-row:nth-child(even) {
@@ -1143,9 +1174,27 @@ onMounted(loadAll);
 }
 
 .audit-details {
+  min-width: 330px;
   max-width: 420px;
-  word-break: break-word;
+  vertical-align: top;
+}
+
+.audit-details-text {
+  max-height: 84px;
+  overflow: auto;
   white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.35;
+  padding-right: 4px;
+}
+
+.audit-details-text::-webkit-scrollbar {
+  width: 8px;
+}
+
+.audit-details-text::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 28%, transparent 72%);
 }
 
 .audit-ip {
@@ -1417,6 +1466,14 @@ onMounted(loadAll);
   .audit-action,
   .audit-ip {
     white-space: nowrap;
+  }
+
+  .audit-table-wrap {
+    max-height: 68vh;
+  }
+
+  .audit-details {
+    min-width: 260px;
   }
 }
 </style>

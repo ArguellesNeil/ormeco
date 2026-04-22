@@ -191,7 +191,7 @@
         </div>
 
         <div v-if="recentBenefits.length" class="table-wrapper">
-          <table class="table">
+          <table class="table table-no-hover">
             <thead>
               <tr>
                 <th v-for="h in ['ID','Applicant','Benefit','Status','Applied']" :key="h">
@@ -238,7 +238,7 @@
         </div>
 
         <div v-if="recentIncidents.length" class="table-wrapper">
-          <table class="table">
+          <table class="table table-no-hover">
             <thead>
               <tr>
                 <th v-for="h in ['ID','Reporter','Category','Status','Reported At']" :key="h">
@@ -346,7 +346,7 @@
         </div>
 
         <div v-if="recentSeminars.length" class="table-wrapper">
-          <table class="table">
+          <table class="table table-no-hover">
             <thead>
               <tr>
                 <th v-for="h in ['ID','Member','Date','Time','Status','Requested']" :key="h">
@@ -778,17 +778,23 @@ onMounted(async () => {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
   margin-bottom: 12px;
 }
 
 .kpi-card {
-  background: var(--surface);
-  border-radius: 14px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  --kpi-accent: #2f6ea8;
+  --kpi-soft: rgba(47, 110, 168, 0.14);
+  --kpi-glow: rgba(47, 110, 168, 0.18);
+  background:
+    radial-gradient(circle at 88% -8%, var(--kpi-soft), transparent 52%),
+    linear-gradient(160deg, #ffffff 0%, #f7fbff 56%, #ffffff 100%);
+  border-radius: 15px;
+  padding: 13px;
+  border: 1px solid #d6e3f1;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
   position: relative;
   overflow: hidden;
   animation: kpiRise 0.4s ease both;
@@ -799,33 +805,50 @@ onMounted(async () => {
   position: absolute;
   left: 0;
   top: 0;
-  height: 2px;
+  height: 3px;
   width: 100%;
-  background: currentColor;
-  opacity: 0.18;
+  background: linear-gradient(90deg, var(--kpi-accent), transparent 78%);
+  opacity: 0.9;
+}
+
+.kpi-card::after {
+  content: "";
+  position: absolute;
+  right: -40px;
+  bottom: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  background: var(--kpi-glow);
+  filter: blur(24px);
+  opacity: 0.58;
+  pointer-events: none;
 }
 
 .kpi-card:hover {
-  background: var(--soft);
-  border-color: var(--border-2);
-  transform: translateY(-1px);
+  border-color: #b7cde5;
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.1);
+  transform: translateY(-3px);
 }
 
 .kpi-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 10px;
 }
 
 .kpi-icon {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: var(--soft);
-  border: 1px solid var(--border);
+  background: linear-gradient(145deg, #ffffff 0%, var(--kpi-soft) 100%);
+  border: 1px solid #c9dbec;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+  color: var(--kpi-accent);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .ui-icon {
@@ -843,56 +866,85 @@ onMounted(async () => {
 }
 
 .kpi-trend {
-  padding: 4px 8px;
-  background: var(--soft);
-  border: 1px solid var(--border);
+  padding: 3px 7px;
+  background: #f3f6fb;
+  border: 1px solid #cad7e6;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #506782;
+  letter-spacing: 0.01em;
 }
 
 .trend-value::before {
   content: "↗";
-  margin-right: 4px;
-  opacity: 0.8;
+  margin-right: 5px;
+  color: var(--kpi-accent);
+  opacity: 0.95;
 }
 
 .kpi-label {
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 750;
+  color: #516987;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
-  margin-bottom: 6px;
+  letter-spacing: 0.09em;
+  margin-bottom: 5px;
 }
 
 .kpi-value {
-  font-size: 34px;
+  font-size: clamp(28px, 2.1vw, 38px);
   font-weight: 800;
   color: var(--text);
-  line-height: 1;
+  line-height: 0.96;
+  letter-spacing: -0.03em;
+}
+
+.kpi-card:hover .kpi-icon {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 12px 20px rgba(15, 23, 42, 0.11);
 }
 
 .kpi-users {
+  --kpi-accent: #2563eb;
+  --kpi-soft: rgba(37, 99, 235, 0.16);
+  --kpi-glow: rgba(37, 99, 235, 0.24);
   color: #2563eb;
 }
 .kpi-meters {
+  --kpi-accent: #0f766e;
+  --kpi-soft: rgba(15, 118, 110, 0.16);
+  --kpi-glow: rgba(15, 118, 110, 0.22);
   color: #0f766e;
 }
 .kpi-incidents {
+  --kpi-accent: #b45309;
+  --kpi-soft: rgba(180, 83, 9, 0.16);
+  --kpi-glow: rgba(180, 83, 9, 0.2);
   color: #b45309;
 }
 .kpi-benefits {
+  --kpi-accent: #7c3aed;
+  --kpi-soft: rgba(124, 58, 237, 0.14);
+  --kpi-glow: rgba(124, 58, 237, 0.2);
   color: #7c3aed;
 }
 .kpi-seminars {
+  --kpi-accent: #2c73b3;
+  --kpi-soft: rgba(44, 115, 179, 0.15);
+  --kpi-glow: rgba(44, 115, 179, 0.2);
   color: #2c73b3;
 }
 .kpi-approved {
+  --kpi-accent: #2f855a;
+  --kpi-soft: rgba(47, 133, 90, 0.14);
+  --kpi-glow: rgba(47, 133, 90, 0.2);
   color: #2f855a;
 }
 .kpi-today {
+  --kpi-accent: #2b6cb0;
+  --kpi-soft: rgba(43, 108, 176, 0.14);
+  --kpi-glow: rgba(43, 108, 176, 0.2);
   color: #2b6cb0;
 }
 
@@ -1280,6 +1332,10 @@ onMounted(async () => {
   background: var(--soft);
 }
 
+.table.table-no-hover tbody tr:hover {
+  background: transparent;
+}
+
 .table tbody tr:last-child {
   border-bottom: none;
 }
@@ -1563,7 +1619,7 @@ onMounted(async () => {
 }
 
 :global(html.ormeco-dark) .hero-kicker {
-  color: #7bead0;
+  color: #9df7e0;
 }
 
 :global(html.ormeco-dark) .hero-strip h3,
@@ -1585,7 +1641,7 @@ onMounted(async () => {
 :global(html.ormeco-dark) .dashboard .chart-center p,
 :global(html.ormeco-dark) .dashboard .legend-label,
 :global(html.ormeco-dark) .dashboard .quick-label {
-  color: #a6bed8 !important;
+  color: #c7dbee !important;
 }
 
 :global(html.ormeco-dark) .dashboard .kpi-value,
@@ -1597,20 +1653,40 @@ onMounted(async () => {
 }
 
 :global(html.ormeco-dark) .hero-pill {
-  color: #bdeedd;
-  border-color: #385576;
-  background: rgba(15, 29, 49, 0.96);
+  color: #e7f4ff !important;
+  border-color: #4f7094;
+  background: #13263d;
 }
 
 :global(html.ormeco-dark) .hero-pill:hover {
-  border-color: rgba(41, 201, 163, 0.52);
-  background: rgba(22, 38, 60, 0.96);
+  color: #ffffff !important;
+  border-color: #78a3d2;
+  background: #1b3350;
 }
 
 :global(html.ormeco-dark) .pulse-card,
 :global(html.ormeco-dark) .quick-metrics,
 :global(html.ormeco-dark) .status-monitor-card {
   background: #0f1d31;
+}
+
+:global(html.ormeco-dark) .kpi-card {
+  background:
+    radial-gradient(circle at 88% -8%, var(--kpi-soft), transparent 52%),
+    linear-gradient(160deg, #0f1d31 0%, #0d1a2c 56%, #0f1d31 100%);
+  border-color: #33506f;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+:global(html.ormeco-dark) .kpi-card:hover {
+  border-color: #47688d;
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.34);
+}
+
+:global(html.ormeco-dark) .kpi-icon,
+:global(html.ormeco-dark) .kpi-trend {
+  background: #122337;
+  border-color: #36516f;
 }
 
 :global(html.ormeco-dark) .chart-shell,
@@ -1628,6 +1704,15 @@ onMounted(async () => {
 :global(html.ormeco-dark) .quick-item:hover {
   border-color: #4c7199;
   background: #16273d;
+}
+
+:global(html.ormeco-dark) .dashboard .legend-item:hover .legend-label,
+:global(html.ormeco-dark) .dashboard .legend-item.active .legend-label,
+:global(html.ormeco-dark) .dashboard .legend-item:hover .legend-value,
+:global(html.ormeco-dark) .dashboard .legend-item.active .legend-value,
+:global(html.ormeco-dark) .dashboard .quick-item:hover .quick-label,
+:global(html.ormeco-dark) .dashboard .quick-item:hover .quick-value {
+  color: #e9f3ff !important;
 }
 
 :global(html.ormeco-dark) .chart-shell::after {
@@ -1660,6 +1745,74 @@ onMounted(async () => {
 :global(html.ormeco-dark) .table tbody tr:hover,
 :global(html.ormeco-dark) .announcement-item:hover {
   background: #16273d;
+}
+
+:global(html.ormeco-dark) .dashboard .table.table-no-hover tbody tr:hover {
+  background: transparent !important;
+}
+
+:global(html.ormeco-dark) .dashboard .table tbody tr:hover td,
+:global(html.ormeco-dark) .dashboard .table tbody tr:hover .date-cell,
+:global(html.ormeco-dark) .dashboard .table tbody tr:hover .title-cell,
+:global(html.ormeco-dark) .dashboard .table tbody tr:hover .message-cell,
+:global(html.ormeco-dark) .dashboard .table tbody tr:hover .user-cell span,
+:global(html.ormeco-dark) .dashboard .announcement-item:hover .announcement-title,
+:global(html.ormeco-dark) .dashboard .announcement-item:hover .announcement-body,
+:global(html.ormeco-dark) .dashboard .announcement-item:hover .announcement-meta,
+:global(html.ormeco-dark) .dashboard .announcement-item:hover .meta-separator {
+  color: #e9f3ff !important;
+}
+
+:global(html.ormeco-dark) .dashboard .badge {
+  background: #152a41;
+  border-color: #3f5b7a;
+  color: #d6e6f9;
+}
+
+:global(html.ormeco-dark) .dashboard .badge-id {
+  background: #1b2f47;
+  border-color: #4d6a88;
+  color: #e9f3ff;
+}
+
+:global(html.ormeco-dark) .dashboard .badge-success {
+  background: rgba(73, 202, 143, 0.24);
+  border-color: rgba(73, 202, 143, 0.42);
+  color: #a5f2cd;
+}
+
+:global(html.ormeco-dark) .dashboard .badge-warning {
+  background: rgba(243, 193, 91, 0.26);
+  border-color: rgba(243, 193, 91, 0.46);
+  color: #ffe6a6;
+}
+
+:global(html.ormeco-dark) .dashboard .badge-info {
+  background: rgba(108, 152, 255, 0.26);
+  border-color: rgba(108, 152, 255, 0.44);
+  color: #d2e2ff;
+}
+
+:global(html.ormeco-dark) .dashboard .badge-danger {
+  background: rgba(255, 125, 125, 0.22);
+  border-color: rgba(255, 125, 125, 0.42);
+  color: #ffc5c5;
+}
+
+:global(html.ormeco-dark) .dashboard .badge-default {
+  background: #162c44;
+  border-color: #3b5877;
+  color: #c4d9ef;
+}
+
+:global(html.ormeco-dark) .dashboard .link:hover,
+:global(html.ormeco-dark) .dashboard .hero-pill:hover {
+  color: #e9f3ff !important;
+}
+
+:global(html.ormeco-dark) .dashboard .link:hover {
+  background: #1a2f49;
+  border-color: #4c7199;
 }
 
 :global(html.ormeco-dark) .announcement-item,
@@ -1717,7 +1870,7 @@ onMounted(async () => {
   }
 
   .kpi-grid {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 10px;
   }
 
