@@ -39,8 +39,15 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
     const auth = useAuthStore();
-    if (to.path !== "/login" && !auth.token) return next("/login");
-    if (to.path === "/login" && auth.token) return next("/stats");
+    const role = String(auth.user && auth.user.role ? auth.user.role : "").toLowerCase();
+    const hasAdminSession = !!auth.token && role === "admin";
+
+    if (to.path !== "/login" && !hasAdminSession) {
+        auth.logout();
+        return next("/login");
+    }
+
+    if (to.path === "/login" && hasAdminSession) return next("/stats");
     next();
 });
 

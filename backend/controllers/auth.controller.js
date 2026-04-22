@@ -12,12 +12,15 @@ exports.login = async(req, res) => {
         }
 
         const [rows] = await db.query(
-            `SELECT id, email, full_name
-       FROM users
-       WHERE email = ?
-         AND password_hash = SHA2(?, 256)
-         AND is_active = 1
-       LIMIT 1`, [email, password]
+            `SELECT u.id, u.email, u.full_name, r.name AS role_name
+             FROM users u
+             JOIN user_roles ur ON ur.user_id = u.id
+             JOIN roles r       ON r.id = ur.role_id
+             WHERE u.email = ?
+                 AND u.password_hash = SHA2(?, 256)
+                 AND u.is_active = 1
+                 AND LOWER(r.name) = 'admin'
+             LIMIT 1`, [email, password]
         );
 
         if (!rows.length) {
@@ -36,7 +39,7 @@ exports.login = async(req, res) => {
         const sessionTimeoutMinutes = Number(policies.sessionTimeoutMinutes || 30);
         const fallbackTokenTtlSeconds = Math.max(3600, sessionTimeoutMinutes * 60 * 24);
         const adminJwtExpiresIn = process.env.ADMIN_JWT_EXPIRES_IN || fallbackTokenTtlSeconds;
-        const token = jwt.sign({ id: user.id, email: user.email, role: "admin" },
+        const token = jwt.sign({ id: user.id, email: user.email, role: user.role_name },
             process.env.JWT_SECRET, { expiresIn: adminJwtExpiresIn }
         );
 
@@ -53,7 +56,7 @@ exports.login = async(req, res) => {
 
         return res.json({
             token,
-            user: { id: user.id, email: user.email, full_name: user.full_name },
+            user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role_name },
             security: {
                 session_timeout_minutes: sessionTimeoutMinutes,
                 admin_2fa_policy_enabled: !!policies.enforceAdmin2FA,

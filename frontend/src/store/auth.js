@@ -16,6 +16,10 @@ export const useAuthStore = defineStore("auth", {
     actions: {
         async login(email, password) {
             const { data } = await api.post("/auth/login", { email, password });
+            const role = String(data && data.user && data.user.role ? data.user.role : "").toLowerCase();
+            if (role !== "admin") {
+                throw new Error("Admin role required");
+            }
             this.token = data.token;
             this.user = data.user;
             this.sessionTimeoutMinutes = normalizeSessionTimeoutMinutes(
