@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { runScheduledReportNow } = require("../services/report-scheduler.service");
 
 const WEEKDAY_NAME_TO_INDEX = {
     mon: 0,
@@ -658,6 +659,23 @@ async function getOverview(req, res) {
     }
 }
 
+async function sendScheduledNow(req, res) {
+    try {
+        const result = await runScheduledReportNow({
+            triggeredBy: Number((req.user && req.user.id) || 0) || null,
+            req,
+        });
+        res.json({
+            message: result && result.sent ? "Scheduled report email sent." : "Scheduled report email skipped.",
+            result,
+        });
+    } catch (err) {
+        console.error("reports.sendScheduledNow error:", err);
+        res.status(500).json({ message: err.message || "Failed to send scheduled report email" });
+    }
+}
+
 module.exports = {
     getOverview,
+    sendScheduledNow,
 };

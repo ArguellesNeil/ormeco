@@ -102,6 +102,65 @@
 
       <article class="panel">
         <div class="panel-header">
+          <h3>Report Scheduling</h3>
+          <span class="chip">Automation</span>
+        </div>
+
+        <label class="toggle-row">
+          <input v-model="settings.reportScheduling.enabled" type="checkbox" />
+          <span>Enable automatic report emails</span>
+        </label>
+
+        <label class="field">
+          <span>Frequency</span>
+          <select v-model="settings.reportScheduling.frequency">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Send Time</span>
+          <input v-model="settings.reportScheduling.sendTime" type="time" />
+        </label>
+
+        <label v-if="settings.reportScheduling.frequency === 'weekly'" class="field">
+          <span>Weekly Send Day</span>
+          <select v-model.number="settings.reportScheduling.weekday">
+            <option v-for="opt in weekdayOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+        </label>
+
+        <label v-if="settings.reportScheduling.frequency === 'monthly'" class="field">
+          <span>Day of Month</span>
+          <input v-model.number="settings.reportScheduling.dayOfMonth" type="number" min="1" max="28" />
+        </label>
+
+        <label class="field">
+          <span>Recipient Emails (comma-separated)</span>
+          <input
+            v-model="settings.reportScheduling.recipients"
+            type="text"
+            placeholder="admin@ormeco.com, ops@ormeco.com"
+          />
+        </label>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" :disabled="sendingScheduledReport" @click="sendScheduledReportNow">
+            {{ sendingScheduledReport ? "Sending..." : "Send Report Now" }}
+          </button>
+        </div>
+
+        <p class="hint">
+          Tip: Leave recipients blank to use <code>ADMIN_EMAIL</code> from server environment settings.
+        </p>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
           <h3>System Thresholds</h3>
           <span class="chip">Monitoring</span>
         </div>
@@ -459,10 +518,29 @@ const defaultSettings = () => ({
     sessionTimeoutMinutes: 30,
     enforceAdmin2FA: false,
   },
+  reportScheduling: {
+    enabled: false,
+    frequency: "weekly",
+    sendTime: "08:00",
+    weekday: 0,
+    dayOfMonth: 1,
+    recipients: "",
+  },
 });
+
+const weekdayOptions = [
+  { value: 0, label: "Monday" },
+  { value: 1, label: "Tuesday" },
+  { value: 2, label: "Wednesday" },
+  { value: 3, label: "Thursday" },
+  { value: 4, label: "Friday" },
+  { value: 5, label: "Saturday" },
+  { value: 6, label: "Sunday" },
+];
 
 const settings = reactive(defaultSettings());
 const savingSettings = ref(false);
+const sendingScheduledReport = ref(false);
 
 const benefits = ref([]);
 const billingRates = ref([]);
@@ -503,6 +581,7 @@ const loadSettings = async () => {
   Object.assign(settings.thresholds, data.thresholds || {});
   Object.assign(settings.appearance, data.appearance || {});
   Object.assign(settings.securityPolicies, data.securityPolicies || {});
+  Object.assign(settings.reportScheduling, data.reportScheduling || {});
   applyTheme(settings.appearance.darkModeEnabled);
 };
 
@@ -585,6 +664,14 @@ const saveSettings = async () => {
         sessionTimeoutMinutes: Number(settings.securityPolicies.sessionTimeoutMinutes || 30),
         enforceAdmin2FA: !!settings.securityPolicies.enforceAdmin2FA,
       },
+      reportScheduling: {
+        enabled: !!settings.reportScheduling.enabled,
+        frequency: String(settings.reportScheduling.frequency || "weekly"),
+        sendTime: String(settings.reportScheduling.sendTime || "08:00"),
+        weekday: Number(settings.reportScheduling.weekday || 0),
+        dayOfMonth: Number(settings.reportScheduling.dayOfMonth || 1),
+        recipients: String(settings.reportScheduling.recipients || "").trim(),
+      },
     };
 
     await api.put("/settings/system", payload);
@@ -594,6 +681,19 @@ const saveSettings = async () => {
     alert(err?.response?.data?.message || "Failed to save settings.");
   } finally {
     savingSettings.value = false;
+  }
+};
+
+const sendScheduledReportNow = async () => {
+  sendingScheduledReport.value = true;
+  try {
+    const { data } = await api.post("/reports/schedule/run-now");
+    alert(data?.message || "Scheduled report email request finished.");
+    await loadAuditLogs();
+  } catch (err) {
+    alert(err?.response?.data?.message || "Failed to send scheduled report email.");
+  } finally {
+    sendingScheduledReport.value = false;
   }
 };
 

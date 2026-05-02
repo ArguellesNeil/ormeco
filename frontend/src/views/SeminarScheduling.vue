@@ -6,20 +6,10 @@
         <p class="page-subtitle">Review, approve, or reject seminar schedule requests from members.</p>
       </div>
 
-      <div class="page-actions">
-        <div class="filter-wrap">
-          <label class="filter-label" for="status-filter">Status</label>
-          <select id="status-filter" v-model="statusFilter" class="select" @change="load">
-            <option value="all">All</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
+      <div class="page-header-right">
+        <div class="page-refresh">
+          <button type="button" class="btn btn-secondary" @click="load" :disabled="loading">Refresh</button>
         </div>
-
-        <button type="button" class="btn btn-secondary" @click="load" :disabled="loading">
-          Refresh
-        </button>
       </div>
     </div>
 
@@ -163,8 +153,24 @@
         </div>
       </section>
 
+      <section class="filter-controls-section">
+        <div class="page-search">
+          <SearchBar v-model="search" placeholder="Search seminar requests..." />
+        </div>
+
+        <div class="filter-wrap">
+          <label class="filter-label" for="status-filter">Status</label>
+          <select id="status-filter" v-model="statusFilter" class="select" @change="load">
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+      </section>
+
       <section class="card-surface table-card">
-        <div v-if="!requests.length" class="empty-state">
+        <div v-if="!visibleRequests.length" class="empty-state">
           No seminar requests found for the selected filter.
         </div>
 
@@ -184,7 +190,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in requests" :key="row.id">
+              <tr v-for="row in visibleRequests" :key="row.id">
                 <td>#{{ row.id }}</td>
                 <td>
                   <div class="member-cell">
@@ -258,9 +264,21 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import api from "../api";
+import SearchBar from "../components/SearchBar.vue";
 
 const requests = ref([]);
 const allRequests = ref([]);
+const search = ref("");
+
+const visibleRequests = computed(() => {
+  const q = String(search.value || "").trim().toLowerCase();
+  if (!q) return requests.value;
+  return requests.value.filter((r) =>
+    [r.id, r.member_name, r.member_code, r.email]
+      .map((v) => String(v || "").toLowerCase())
+      .some((s) => s.includes(q))
+  );
+});
 const loading = ref(false);
 const saving = ref(false);
 const error = ref("");
@@ -564,7 +582,68 @@ onMounted(load);
 </script>
 
 <style scoped>
-.seminar-page {
+.page-header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  width: auto;
+}
+
+.page-refresh {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.filter-controls-section {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.page-search {
+  flex: 0 0 330px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-wrap label {
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.filter-wrap select {
+  min-width: 140px;
+}
+
+@media (max-width: 920px) {
+  .filter-controls-section {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .page-search {
+    flex: 0 0 100%;
+  }
+  
+  .filter-wrap {
+    flex: 0 0 auto;
+  }
+}
+
+.page-shell .seminar-page {
   display: grid;
   gap: 12px;
 }

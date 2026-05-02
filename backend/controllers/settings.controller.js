@@ -30,6 +30,14 @@ const DEFAULT_SETTINGS = {
         sessionTimeoutMinutes: 30,
         enforceAdmin2FA: false,
     },
+    reportScheduling: {
+        enabled: false,
+        frequency: "weekly",
+        sendTime: "08:00",
+        weekday: 0,
+        dayOfMonth: 1,
+        recipients: "",
+    },
 };
 
 async function ensureSettingsTable() {
@@ -58,7 +66,7 @@ async function loadSettings() {
     await ensureSettingsTable();
 
     const [rows] = await db.query(
-        `SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?, ?, ?)`, ["emailTemplates", "notificationPreferences", "thresholds", "appearance", "securityPolicies"]
+        `SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?, ?, ?, ?)`, ["emailTemplates", "notificationPreferences", "thresholds", "appearance", "securityPolicies", "reportScheduling"]
     );
 
     const merged = {
@@ -67,6 +75,7 @@ async function loadSettings() {
         thresholds: {...DEFAULT_SETTINGS.thresholds },
         appearance: {...DEFAULT_SETTINGS.appearance },
         securityPolicies: {...DEFAULT_SETTINGS.securityPolicies },
+        reportScheduling: {...DEFAULT_SETTINGS.reportScheduling },
     };
 
     for (const row of rows) {
@@ -99,6 +108,10 @@ function sanitizePayload(payload = {}) {
         securityPolicies: {
             ...DEFAULT_SETTINGS.securityPolicies,
             ...(payload.securityPolicies || {}),
+        },
+        reportScheduling: {
+            ...DEFAULT_SETTINGS.reportScheduling,
+            ...(payload.reportScheduling || {}),
         },
     };
 
@@ -155,6 +168,15 @@ function sanitizePayload(payload = {}) {
         )
     );
     safe.securityPolicies.enforceAdmin2FA = !!safe.securityPolicies.enforceAdmin2FA;
+
+    safe.reportScheduling.enabled = !!safe.reportScheduling.enabled;
+    const frequency = String(safe.reportScheduling.frequency || "weekly").toLowerCase();
+    safe.reportScheduling.frequency = ["daily", "weekly", "monthly"].includes(frequency) ? frequency : "weekly";
+    const rawSendTime = String(safe.reportScheduling.sendTime || "08:00").trim();
+    safe.reportScheduling.sendTime = /^([01]\d|2[0-3]):([0-5]\d)$/.test(rawSendTime) ? rawSendTime : "08:00";
+    safe.reportScheduling.weekday = Math.min(6, Math.max(0, Number(safe.reportScheduling.weekday || 0)));
+    safe.reportScheduling.dayOfMonth = Math.min(28, Math.max(1, Number(safe.reportScheduling.dayOfMonth || 1)));
+    safe.reportScheduling.recipients = String(safe.reportScheduling.recipients || "").trim();
 
     return safe;
 }
@@ -230,6 +252,17 @@ exports.updateSystemSettings = async(req, res) => {
             `, ["securityPolicies", JSON.stringify(payload.securityPolicies), userId]
         );
 
+        await db.query(
+            `
+            INSERT INTO system_settings (setting_key, setting_value, updated_by)
+            VALUES (?, CAST(? AS JSON), ?)
+            ON DUPLICATE KEY UPDATE
+                setting_value = VALUES(setting_value),
+                updated_by = VALUES(updated_by),
+                updated_at = CURRENT_TIMESTAMP
+            `, ["reportScheduling", JSON.stringify(payload.reportScheduling), userId]
+        );
+
         await logAuditEvent({
             req,
             actionType: "settings",
@@ -237,7 +270,7 @@ exports.updateSystemSettings = async(req, res) => {
             entityType: "system_settings",
             entityId: "global",
             details: {
-                sections: ["emailTemplates", "notificationPreferences", "thresholds", "appearance", "securityPolicies"],
+                sections: ["emailTemplates", "notificationPreferences", "thresholds", "appearance", "securityPolicies", "reportScheduling"],
             },
         });
 

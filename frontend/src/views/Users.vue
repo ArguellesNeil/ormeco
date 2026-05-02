@@ -6,14 +6,19 @@
         <p class="page-subtitle">Operational overview and management</p>
       </div>
 
-      <div class="page-actions">
-        <button @click="openCreate" class="btn btn-primary">+ New User</button>
+      <div class="page-header-right">
+        <div class="page-search">
+          <SearchBar v-model="search" placeholder="Search users..." />
+        </div>
+        <div class="page-actions">
+          <button @click="openCreate" class="btn btn-primary">+ New User</button>
+        </div>
       </div>
     </div>
 
     <DataTable
       :columns="columns"
-      :rows="users"
+      :rows="filteredUsers"
       idKey="id"
       @edit="openEdit"
       @delete="remove"
@@ -21,46 +26,26 @@
 
     <div v-if="showModal" class="modal-overlay">
       <div class="modal-panel glass-soft users-modal-panel">
-        <h3 class="modal-title">
-          {{ form.id ? 'Edit User' : 'New User' }}
-        </h3>
+        <h3 class="modal-title">{{ form.id ? 'Edit User' : 'New User' }}</h3>
 
         <label class="form-field">
           <span class="form-label">Email</span>
-          <input
-            v-model="form.email"
-            type="email"
-            class="input"
-            placeholder="user@example.com"
-          />
+          <input v-model="form.email" type="email" class="input" placeholder="user@example.com" />
         </label>
 
         <label class="form-field">
           <span class="form-label">Full Name</span>
-          <input
-            v-model="form.full_name"
-            class="input"
-            placeholder="John Doe"
-          />
+          <input v-model="form.full_name" class="input" placeholder="John Doe" />
         </label>
 
         <label class="form-field">
           <span class="form-label">Phone</span>
-          <input
-            v-model="form.phone"
-            class="input"
-            placeholder="+1234567890"
-          />
+          <input v-model="form.phone" class="input" placeholder="+1234567890" />
         </label>
 
         <label v-if="!form.id" class="form-field">
           <span class="form-label">Password</span>
-          <input
-            v-model="form.password"
-            type="password"
-            class="input"
-            placeholder="••••••••"
-          />
+          <input v-model="form.password" type="password" class="input" placeholder="••••••••" />
         </label>
 
         <label class="checkbox-group card-surface">
@@ -69,12 +54,8 @@
         </label>
 
         <div class="modal-actions">
-          <button @click="close" class="btn btn-secondary">
-            Cancel
-          </button>
-          <button @click="save" class="btn btn-primary">
-            Save
-          </button>
+          <button @click="close" class="btn btn-secondary">Cancel</button>
+          <button @click="save" class="btn btn-primary">Save</button>
         </div>
       </div>
     </div>
@@ -82,11 +63,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import api from "../api";
 import DataTable from "../components/DataTable.vue";
+import SearchBar from "../components/SearchBar.vue";
 
 const users = ref([]);
+const search = ref("");
 const showModal = ref(false);
 
 const form = ref({
@@ -111,26 +94,21 @@ const load = async () => {
   users.value = data;
 };
 
+const filteredUsers = computed(() => {
+  const q = String(search.value || "").trim().toLowerCase();
+  if (!q) return users.value;
+  return users.value.filter((r) =>
+    Object.values(r || {}).some((v) => String(v || "").toLowerCase().includes(q))
+  );
+});
+
 const openCreate = () => {
-  form.value = {
-    id: null,
-    email: "",
-    full_name: "",
-    phone: "",
-    password: "",
-    is_active: true
-  };
+  form.value = { id: null, email: "", full_name: "", phone: "", password: "", is_active: true };
   showModal.value = true;
 };
 
 const openEdit = (row) => {
-  form.value = {
-    id: row.id,
-    email: row.email,
-    full_name: row.full_name,
-    phone: row.phone,
-    is_active: !!row.is_active
-  };
+  form.value = { id: row.id, email: row.email, full_name: row.full_name, phone: row.phone, is_active: !!row.is_active };
   showModal.value = true;
 };
 
@@ -156,6 +134,16 @@ onMounted(load);
 </script>
 
 <style scoped>
+.page-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-search {
+  margin-right: 6px;
+}
+
 .users-shell :deep(.table-wrapper) {
   box-shadow: 0 14px 30px rgba(16, 35, 62, 0.08);
 }

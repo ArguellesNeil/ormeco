@@ -6,7 +6,11 @@
         <p class="page-subtitle">Operational overview and management</p>
       </div>
 
-      <div class="page-actions meters-actions">
+      <div class="page-header-right">
+        <div class="page-search">
+          <SearchBar v-model="search" placeholder="Search meters..." />
+        </div>
+        <div class="page-actions meters-actions">
         <button type="button" @click="downloadXlsx" class="btn btn-secondary meter-toolbar-btn">
           Export XLSX
         </button>
@@ -25,10 +29,11 @@
 
         <button type="button" @click="openCreate" class="btn btn-primary">+ New Meter</button>
       </div>
+      </div>
     </div>
     <DataTable
       :columns="columns"
-      :rows="meters"
+      :rows="filteredMeters"
       idKey="id"
       @edit="openEdit"
       @delete="remove"
@@ -114,12 +119,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import api from "../api";
 import DataTable from "../components/DataTable.vue";
+import SearchBar from "../components/SearchBar.vue";
 
 const meters = ref([]);
 const users = ref([]);
+const search = ref("");
+
+const filteredMeters = computed(() => {
+  const q = String(search.value || "").trim().toLowerCase();
+  if (!q) return meters.value;
+  return meters.value.filter((r) =>
+    Object.values(r || {}).some((v) => String(v || "").toLowerCase().includes(q))
+  );
+});
 const showModal = ref(false);
 const importInput = ref(null);
 
@@ -280,6 +295,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.page-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-search { margin-right: 6px; }
 .meters-shell :deep(.table-wrapper) {
   box-shadow: 0 14px 30px rgba(16, 35, 62, 0.08);
 }

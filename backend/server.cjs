@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const { startReportScheduler } = require("./services/report-scheduler.service");
 
 const app = express();
 
@@ -46,3 +47,4 @@ app.use("/api/settings", require("./routes/settings.routes.js"));
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+startReportScheduler();

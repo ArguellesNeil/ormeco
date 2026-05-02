@@ -174,6 +174,24 @@ Please review the application and attached documents in the admin portal.
       return false;
     }
   }
+
+  async sendReportDigestEmail({ to, subject, html, text }) {
+    const recipients = Array.isArray(to) ? to.filter(Boolean) : [to].filter(Boolean);
+    if (!recipients.length) {
+      throw new Error("No recipients provided for report digest email");
+    }
+
+    const mailOptions = {
+      from: `"ORMECO Reports" <${process.env.EMAIL_USER}>`,
+      to: recipients.join(", "),
+      subject: String(subject || "ORMECO Scheduled Report"),
+      text: String(text || ""),
+      html: String(html || ""),
+    };
+
+    const info = await this.transporter.sendMail(mailOptions);
+    return { success: true, messageId: info.messageId };
+  }
 }
 
 module.exports = new EmailService();

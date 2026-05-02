@@ -11,7 +11,11 @@
         <p v-if="period === 'custom' && customScopeSummary" class="custom-range-meta">Current custom range: {{ customScopeSummary }}</p>
       </div>
 
-      <div class="page-actions report-actions">
+      <div class="page-header-right">
+        <div class="page-search">
+          <SearchBar v-model="search" placeholder="Search reports..." />
+        </div>
+        <div class="page-actions report-actions">
         <div class="period-switch">
           <button
             v-for="p in periods"
@@ -28,6 +32,7 @@
         <button type="button" class="btn btn-primary" @click="exportPdf" :disabled="loading || !report">
           Export PDF
         </button>
+      </div>
       </div>
     </div>
 
@@ -304,7 +309,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in trendRows" :key="row.label">
+              <tr v-for="row in filteredTrendRows" :key="row.label">
                 <td>{{ formatTrendTableLabel(row.label) }}</td>
                 <td>{{ row.users }}</td>
                 <td>{{ row.meters }}</td>
@@ -444,6 +449,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
 import api from "../api";
+import SearchBar from "../components/SearchBar.vue";
 
 const period = ref("monthly");
 const loading = ref(false);
@@ -665,6 +671,17 @@ const trendRows = computed(() => {
       total: users + meters + incidents + seminars + announcements,
     };
   });
+});
+
+const search = ref("");
+const filteredTrendRows = computed(() => {
+  const q = String(search.value || "").trim().toLowerCase();
+  if (!q) return trendRows.value;
+  return trendRows.value.filter((r) =>
+    [r.label, String(r.users), String(r.meters), String(r.incidents), String(r.seminars)]
+      .map((v) => String(v || "").toLowerCase())
+      .some((s) => s.includes(q))
+  );
 });
 
 const chartLabels = computed(() => report.value?.labels || []);
@@ -1606,6 +1623,8 @@ onMounted(loadReport);
 </script>
 
 <style scoped>
+.page-header-right { display:flex; align-items:center; gap:12px }
+.page-search { margin-right:6px }
 .reports-page {
   --rp-bg-soft: #f5f9ff;
   --rp-line: #d7e4f2;

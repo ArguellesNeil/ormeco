@@ -6,14 +6,19 @@
         <p class="page-subtitle">Publish updates and advisories for users in the mobile app.</p>
       </div>
 
-      <div class="page-actions">
-        <button class="btn btn-primary" @click="openCreate">+ New Announcement</button>
+      <div class="page-header-right">
+        <div class="page-actions">
+          <button class="btn btn-primary" @click="openCreate">+ New Announcement</button>
+          <div class="page-search">
+            <SearchBar v-model="search" placeholder="Search announcements..." />
+          </div>
+        </div>
       </div>
     </div>
 
     <DataTable
       :columns="columns"
-      :rows="announcements"
+      :rows="filteredAnnouncements"
       idKey="id"
       @edit="openEdit"
       @delete="removeAnnouncement"
@@ -119,11 +124,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import api from "../api";
 import DataTable from "../components/DataTable.vue";
+import SearchBar from "../components/SearchBar.vue";
 
 const announcements = ref([]);
+const search = ref("");
+
+const filteredAnnouncements = computed(() => {
+  const q = String(search.value || "").trim().toLowerCase();
+  if (!q) return announcements.value;
+  return announcements.value.filter((r) =>
+    Object.values(r || {}).some((v) => String(v || "").toLowerCase().includes(q))
+  );
+});
 const showModal = ref(false);
 const selectedPhotos = ref([]);
 const showAttachmentsModal = ref(false);
@@ -298,6 +313,10 @@ onMounted(load);
   background: #f8fbff;
   display: block;
   min-height: 80px;
+
+.page-header-right { display: flex; align-items: center; gap: 12px; }
+.page-actions { display: flex; align-items: center; gap: 10px; }
+.page-search { margin-left: 8px; }
 }
 
 .attachment-thumb img {

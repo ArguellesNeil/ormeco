@@ -6,8 +6,12 @@
         <p class="page-subtitle">Review submitted applications and approve or reject each request.</p>
       </div>
 
-      <div class="page-actions">
-        <div class="filter-wrap">
+      <div class="page-header-right">
+        <div class="page-search">
+          <SearchBar v-model="search" placeholder="Search applications..." />
+        </div>
+
+        <div class="filter-wrap center-filter">
           <label class="filter-label" for="approval-status-filter">Status</label>
           <select id="approval-status-filter" v-model="statusFilter" class="select" @change="loadApplications">
             <option value="all">All</option>
@@ -17,9 +21,11 @@
           </select>
         </div>
 
-        <button type="button" class="btn btn-secondary" @click="loadApplications" :disabled="loading">
-          Refresh
-        </button>
+        <div class="page-refresh">
+          <button type="button" class="btn btn-secondary" @click="loadApplications" :disabled="loading">
+            Refresh
+          </button>
+        </div>
       </div>
     </div>
 
@@ -27,7 +33,7 @@
     <div v-else-if="error" class="card-surface state-card error">{{ error }}</div>
 
     <section v-else class="card-surface table-card">
-      <div v-if="!applications.length" class="empty-state">
+      <div v-if="!filteredApplications.length" class="empty-state">
         No benefit applications found for the selected filter.
       </div>
 
@@ -45,7 +51,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in applications" :key="row.id">
+            <tr v-for="row in filteredApplications" :key="row.id">
               <td>#{{ row.id }}</td>
               <td>{{ row.applicant_name || '-' }}</td>
               <td>{{ row.benefit_name || '-' }}</td>
@@ -140,12 +146,24 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
 import api from "../api";
 import { useAuthStore } from "../store/auth";
+import SearchBar from "../components/SearchBar.vue";
 
 const auth = useAuthStore();
 const applications = ref([]);
+const search = ref("");
+
+const filteredApplications = computed(() => {
+  const q = String(search.value || "").trim().toLowerCase();
+  if (!q) return applications.value;
+  return applications.value.filter((r) =>
+    [r.id, r.applicant_name, r.benefit_name, r.email]
+      .map((v) => String(v || "").toLowerCase())
+      .some((s) => s.includes(q))
+  );
+});
 const loading = ref(false);
 const saving = ref(false);
 const error = ref("");
@@ -295,8 +313,62 @@ onMounted(loadApplications);
   gap: 12px;
 }
 
+.page-header-right {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+}
+
+.page-search {
+  flex: 0 0 330px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.center-filter {
+  flex: 1 1 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .filter-wrap {
-  min-width: 170px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 280px;
+}
+
+.filter-wrap label {
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+.filter-wrap select {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #d7e0ee;
+  background: #fff;
+  font-size: 13px;
+}
+
+.page-refresh {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 920px) {
+  .page-header-right { flex-direction:column; align-items:stretch; gap:10px; }
+  .page-search, .center-filter, .page-refresh { flex: none; }
 }
 
 .filter-label {

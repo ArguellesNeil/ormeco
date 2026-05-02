@@ -5,11 +5,17 @@
         <h2 class="page-title">Incidents</h2>
         <p class="page-subtitle">Track reports and update resolution status quickly.</p>
       </div>
+
+      <div class="page-header-right">
+        <div class="page-search">
+          <SearchBar v-model="search" placeholder="Search incidents..." />
+        </div>
+      </div>
     </div>
 
     <DataTable
       :columns="columns"
-      :rows="incidents"
+      :rows="filteredIncidents"
       idKey="id"
       :showActions="true"
       @edit="openEditStatus"
@@ -111,11 +117,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import api from "../api";
 import DataTable from "../components/DataTable.vue";
+import SearchBar from "../components/SearchBar.vue";
 
 const incidents = ref([]);
+const search = ref("");
+
+const filteredIncidents = computed(() => {
+  const q = String(search.value || "").trim().toLowerCase();
+  if (!q) return incidents.value;
+  return incidents.value.filter((r) =>
+    Object.values(r || {}).some((v) => String(v || "").toLowerCase().includes(q))
+  );
+});
 const showModal = ref(false);
 const showEvidenceModal = ref(false);
 
@@ -297,6 +313,8 @@ onMounted(load);
 </script>
 
 <style scoped>
+.page-header-right { display: flex; align-items: center; gap: 12px; }
+.page-search { margin-right: 6px; }
 .info-grid {
   margin-bottom: 14px;
   padding: 14px;
