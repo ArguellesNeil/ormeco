@@ -106,7 +106,7 @@
 
           <section class="docs-section card-surface">
             <div class="docs-head">
-              <h4>Submitted Documents</h4>
+              <h4>Attachments for This Application</h4>
               <span>{{ documents.length }} file(s)</span>
             </div>
 
@@ -130,7 +130,7 @@
               </li>
             </ul>
 
-            <div v-else class="docs-state">No uploaded documents found for this applicant.</div>
+            <div v-else class="docs-state">No attachments found for this application.</div>
           </section>
         </div>
 

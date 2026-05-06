@@ -8,6 +8,7 @@ const {
     validatePasswordAgainstPolicy,
 } = require("../services/security-policy.service");
 const { logAuditEvent } = require("../services/audit-log.service");
+const { notifyAdmins } = require("../services/admin-notification.service");
 
 async function signup(req, res) {
     const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -135,6 +136,15 @@ async function signup(req, res) {
             entityId: userId,
             details: { account_number: accountNumber, membership_no: membershipNo },
         });
+
+        try {
+            await notifyAdmins({
+                title: "New User Signup",
+                body: `User #${userId} (${name}) signed up with account ${accountNumber}.`,
+            });
+        } catch (notifyErr) {
+            console.warn("signup admin notification failed:", notifyErr.message);
+        }
 
         return res.json({
             status: "success",

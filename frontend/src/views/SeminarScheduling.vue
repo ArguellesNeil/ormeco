@@ -19,13 +19,13 @@
     <template v-else>
       <section class="monitor-grid">
         <article class="card-surface monitor-card">
-          <span class="monitor-label">Approved Today</span>
+          <span class="monitor-label">Approved</span>
           <strong class="monitor-value">{{ todayStats.approved }}</strong>
           <small>{{ formatDate(todayStats.date) }}</small>
         </article>
 
         <article class="card-surface monitor-card">
-          <span class="monitor-label">Total Requests Today</span>
+          <span class="monitor-label">Total Requests</span>
           <strong class="monitor-value">{{ todayStats.total }}</strong>
           <small>Pending: {{ todayStats.pending }} | Rejected: {{ todayStats.rejected }}</small>
         </article>
@@ -136,9 +136,12 @@
               'is-selected': cell.isSelected,
               'has-approved': cell.stats.approved > 0,
               'is-weekend': cell.isWeekend,
+              'is-full': Number(cell.stats.approved || 0) >= 50,
             }"
             :style="calendarCellStyle(cell)"
+            :disabled="Number(cell.stats.approved || 0) >= 50"
             @click="selectCalendarDate(cell)"
+            :aria-disabled="Number(cell.stats.approved || 0) >= 50"
           >
             <div class="calendar-day-top">
               <span class="calendar-day-number">{{ cell.day }}</span>
@@ -268,6 +271,7 @@ import SearchBar from "../components/SearchBar.vue";
 
 const requests = ref([]);
 const allRequests = ref([]);
+const serverTodayDate = ref("");
 const search = ref("");
 
 const visibleRequests = computed(() => {
@@ -377,9 +381,9 @@ const dateSummary = computed(() => {
 });
 
 const todayStats = computed(() => {
-  const today = todayDateKey();
-  return dateSummary.value.find((x) => x.date === today) || {
-    date: today,
+  const date = monitorDate.value || serverTodayDate.value || todayDateKey();
+  return dateSummary.value.find((x) => x.date === date) || {
+    date: date,
     total: 0,
     approved: 0,
     pending: 0,
@@ -512,6 +516,13 @@ const calendarCellStyle = (cell) => {
 
 const selectCalendarDate = (cell) => {
   if (!cell || !cell.key) return;
+  // Prevent selecting a fully-booked date
+  const approvedCount = Number(cell.stats && cell.stats.approved ? cell.stats.approved : 0);
+  if (approvedCount >= 50) {
+    alert("This date is fully booked (50 approved).");
+    return;
+  }
+
   monitorDate.value = cell.key;
   if (!cell.isCurrentMonth) {
     const d = new Date(`${cell.key}T00:00:00`);
@@ -540,8 +551,12 @@ const load = async () => {
       api.get("/seminar-schedules"),
     ]);
 
-    requests.value = Array.isArray(filteredRes.data) ? filteredRes.data : [];
-    allRequests.value = Array.isArray(allRes.data) ? allRes.data : [];
+    const filteredData = filteredRes.data || {};
+    const allData = allRes.data || {};
+    
+    requests.value = Array.isArray(filteredData.rows) ? filteredData.rows : (Array.isArray(filteredData) ? filteredData : []);
+    allRequests.value = Array.isArray(allData.rows) ? allData.rows : (Array.isArray(allData) ? allData : []);
+    serverTodayDate.value = allData.today_date || filteredData.today_date || "";
   } catch (err) {
     error.value = (err && err.response && err.response.data && err.response.data.message) || err.message || "Failed to load seminar schedule requests";
   } finally {
@@ -1187,6 +1202,17 @@ onMounted(load);
 :global(html.ormeco-dark) .seminar-page .summary-grid {
   background: #0f1d31;
   border-color: #33506f;
+}
+
+/* Fully-booked day styling */
+.calendar-day.is-full {
+  opacity: 0.72;
+  border-color: #c0392b;
+  background: linear-gradient(160deg, rgba(255, 245, 245, 0.9), rgba(255, 240, 240, 0.95));
+}
+
+.calendar-day.is-full .calendar-day-number {
+  color: #a02a22;
 }
 
 :global(html.ormeco-dark) .seminar-page .calendar-head {

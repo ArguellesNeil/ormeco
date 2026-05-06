@@ -225,7 +225,6 @@ const types = [
   { label: "Incidents", value: "incidents" },
   { label: "Seminars", value: "seminars" },
   { label: "System", value: "system" },
-  { label: "General", value: "general" },
 ];
 
 const tableColumns = [
@@ -251,7 +250,6 @@ const TARGET_PAGE_BY_TYPE = {
   incidents: "/incidents",
   seminars: "/seminar-scheduling",
   system: "/system-settings",
-  general: "/stats",
 };
 
 const resolveNotificationTarget = (item) => {
@@ -720,7 +718,6 @@ onMounted(load);
 .type-incidents { background: #fff3e9; color: #bf6a18; }
 .type-seminars { background: #ecf4ff; color: #2f6ea8; }
 .type-system { background: #fff0f5; color: #c21f66; }
-.type-general { background: #f0f3f8; color: #4b6280; }
 
 .status-badge.read { background: #eef3f8; color: #4f6786; }
 .status-badge.unread { background: #e7f6ff; color: #1f78b5; }
@@ -1053,18 +1050,6 @@ onMounted(load);
   background: rgba(255, 125, 175, 0.2);
   color: #ffd0e7;
   border-color: rgba(255, 125, 175, 0.34);
-}
-
-:global(html.ormeco-dark) .notifications-page .type-general {
-  background: #16283c;
-  color: #c4d9ef;
-  border-color: #3b5877;
-}
-
-:global(html.ormeco-dark) .notifications-page .status-badge.read {
-  background: #152a41;
-  color: #d6e6f9;
-  border-color: #3f5b7a;
 }
 
 :global(html.ormeco-dark) .notifications-page .status-badge.unread {

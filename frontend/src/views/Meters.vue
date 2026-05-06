@@ -7,6 +7,11 @@
       </div>
 
       <div class="page-header-right">
+        <div class="meter-module-tabs" role="tablist" aria-label="Meter pages">
+          <router-link to="/meters" class="meter-tab active">Meters</router-link>
+          <router-link to="/meters/readings" class="meter-tab">Meter Readings</router-link>
+        </div>
+
         <div class="page-search">
           <SearchBar v-model="search" placeholder="Search meters..." />
         </div>
@@ -301,6 +306,34 @@ onMounted(async () => {
   gap: 12px;
 }
 
+.meter-module-tabs {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+  border: 1px solid #d3e0ee;
+  border-radius: 999px;
+  background: #f6f9fc;
+  gap: 4px;
+}
+
+.meter-tab {
+  text-decoration: none;
+  color: #4f6580;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  border-radius: 999px;
+  padding: 8px 12px;
+  transition: all 0.18s ease;
+}
+
+.meter-tab.active,
+.meter-tab.router-link-active {
+  background: linear-gradient(135deg, #0f8b6f 0%, #16a085 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(15, 139, 111, 0.25);
+}
+
 .page-search { margin-right: 6px; }
 .meters-shell :deep(.table-wrapper) {
   box-shadow: 0 14px 30px rgba(16, 35, 62, 0.08);
@@ -348,5 +381,17 @@ onMounted(async () => {
 
 .modal-actions .btn {
   flex: 1;
+}
+
+@media (max-width: 1100px) {
+  .page-header-right {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .meter-module-tabs {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 </style>

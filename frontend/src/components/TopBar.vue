@@ -61,6 +61,7 @@ const pageTitle = computed(() => {
     "/stats": "Dashboard",
     "/users": "Users",
     "/meters": "Meters",
+    "/meters/readings": "Meter Readings",
     "/incidents": "Incidents",
     "/announcements": "Announcements",
     "/notifications": "Notifications & Alerts",

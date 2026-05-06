@@ -30,14 +30,18 @@ async function getWorkflowThresholds() {
 
 function classifyNotification(title = "", body = "") {
     const text = `${title} ${body}`.toLowerCase();
+    if (text.includes("system alert") || text.includes("utility") || text.includes("unusual")) return "system";
     if (text.includes("benefit")) return "benefits";
     if (text.includes("incident")) return "incidents";
     if (text.includes("seminar") || text.includes("schedule")) return "seminars";
-    if (text.includes("system alert") || text.includes("utility") || text.includes("unusual")) return "system";
-    return "general";
+    return "system";
 }
 
-function resolveNotificationTargetPath(type) {
+function resolveNotificationTargetPath(type, title = "", body = "") {
+    const text = `${title} ${body}`.toLowerCase();
+    if (text.includes("meter")) return "/meters";
+    if (text.includes("user") || text.includes("signup") || text.includes("member")) return "/users";
+
     switch (type) {
         case "benefits":
             return "/benefit-approvals";
@@ -192,7 +196,7 @@ exports.getNotifications = async(req, res) => {
             .filter((row) => (typeFilter === "all" ? true : row.type === typeFilter))
             .map((row) => ({
                 ...row,
-                target_path: resolveNotificationTargetPath(row.type),
+                target_path: resolveNotificationTargetPath(row.type, row.title, row.body),
             }));
 
         const summary = {
@@ -204,7 +208,6 @@ exports.getNotifications = async(req, res) => {
                 incidents: items.filter((n) => n.type === "incidents").length,
                 seminars: items.filter((n) => n.type === "seminars").length,
                 system: items.filter((n) => n.type === "system").length,
-                general: items.filter((n) => n.type === "general").length,
             },
         };
 

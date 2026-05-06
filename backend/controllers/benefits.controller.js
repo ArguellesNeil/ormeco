@@ -4,6 +4,13 @@ const path = require("path");
 const { logAuditEvent } = require("../services/audit-log.service");
 const ALLOWED_APPLICATION_STATUS = new Set(["pending", "approved", "rejected"]);
 const BENEFIT_DOCS_DIR = path.join(__dirname, "..", "uploads", "benefit_documents");
+const APPLICATION_DOC_WINDOW_MS = 5 * 60 * 1000;
+
+function parseBenefitDocumentTimestamp(fileName) {
+    const raw = String(fileName || "").split("_")[0];
+    const ts = Number(raw);
+    return Number.isFinite(ts) ? ts : null;
+}
 
 async function getAllBenefits(req, res) {
     try {
@@ -156,7 +163,7 @@ async function getApplicationDocuments(req, res) {
         }
 
         const [apps] = await db.query(
-            "SELECT id, user_id FROM benefit_applications WHERE id = ? LIMIT 1", [applicationId]
+            "SELECT id, user_id, applied_at FROM benefit_applications WHERE id = ? LIMIT 1", [applicationId]
         );
 
         if (!apps.length) {
@@ -168,6 +175,28 @@ async function getApplicationDocuments(req, res) {
             return res.json({ documents: [] });
         }
 
+        const appliedAt = new Date(apps[0].applied_at);
+        const appliedAtMs = appliedAt.getTime();
+        if (!Number.isFinite(appliedAtMs)) {
+            return res.json({ documents: [] });
+        }
+
+        const [userApplicationRows] = await db.query(
+            `SELECT id, applied_at
+             FROM benefit_applications
+             WHERE user_id = ?
+             ORDER BY applied_at DESC, id DESC`,
+            [userId]
+        );
+
+        const orderedApplications = Array.isArray(userApplicationRows) ? userApplicationRows : [];
+        const currentIndex = orderedApplications.findIndex((row) => Number(row.id) === applicationId);
+        const nextNewerApplication = currentIndex > 0 ? orderedApplications[currentIndex - 1] : null;
+        const nextNewerAppliedAtMs = nextNewerApplication ? new Date(nextNewerApplication.applied_at).getTime() : null;
+
+        const lowerBoundMs = appliedAtMs - APPLICATION_DOC_WINDOW_MS;
+        const upperBoundMs = Number.isFinite(nextNewerAppliedAtMs) ? nextNewerAppliedAtMs - APPLICATION_DOC_WINDOW_MS : null;
+
         if (!fs.existsSync(BENEFIT_DOCS_DIR)) {
             return res.json({ documents: [] });
         }
@@ -177,7 +206,15 @@ async function getApplicationDocuments(req, res) {
             .map((entry) => entry.name)
             .filter((name) => {
                 const marker = `_${userId}_`;
-                return name.includes(marker);
+                if (!name.includes(marker)) return false;
+
+                const fileTimestamp = parseBenefitDocumentTimestamp(name);
+                if (!Number.isFinite(fileTimestamp)) return false;
+
+                if (fileTimestamp < lowerBoundMs) return false;
+                if (Number.isFinite(upperBoundMs) && fileTimestamp >= upperBoundMs) return false;
+
+                return true;
             });
 
         const documents = files

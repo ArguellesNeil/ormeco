@@ -5,6 +5,7 @@ const {
     validatePasswordAgainstPolicy,
 } = require("../services/security-policy.service");
 const { logAuditEvent } = require("../services/audit-log.service");
+const { notifyAdmins } = require("../services/admin-notification.service");
 
 // GET /api/users
 async function getAllUsers(req, res) {
@@ -67,6 +68,15 @@ async function createUser(req, res) {
             targetUserId: result.insertId,
             details: { email, full_name, is_active: !!is_active },
         });
+
+        try {
+            await notifyAdmins({
+                title: "New User Registered",
+                body: `User #${result.insertId} (${full_name}) was created with email ${email}.`,
+            });
+        } catch (notifyErr) {
+            console.warn("createUser admin notification failed:", notifyErr.message);
+        }
 
         res.status(201).json({ id: result.insertId });
     } catch (err) {

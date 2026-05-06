@@ -120,6 +120,12 @@ const menu = [
   },
   { label: "Meters", to: "/meters", tone: "amber", iconPaths: ["M13 3L6 13H11L10 21L18 10H13L13 3Z"] },
   {
+    label: "Meter Readings",
+    to: "/meters/readings",
+    tone: "amber",
+    iconPaths: ["M5 5H19V19H5V5Z", "M8 14L10.8 11.2L13 13.4L16 10.4", "M8 8H16"]
+  },
+  {
     label: "Incidents",
     to: "/incidents",
     tone: "orange",

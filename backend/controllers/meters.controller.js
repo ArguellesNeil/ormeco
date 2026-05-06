@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const { logAuditEvent } = require("../services/audit-log.service");
+const { notifyAdmins } = require("../services/admin-notification.service");
 
 const ExcelJS = require("exceljs");
 
@@ -57,6 +58,18 @@ function normalizeMeterPayload(body = {}) {
         installation_address: installationAddress,
         installed_at: installedAt || null,
         status,
+    };
+}
+
+function normalizeReadingPayload(body = {}) {
+    const meterId = Number(body.meter_id);
+    const kwh = Number(body.kwh);
+    const readingDateRaw = body.reading_date ? String(body.reading_date).trim() : "";
+
+    return {
+        meter_id: Number.isFinite(meterId) ? meterId : NaN,
+        kwh: Number.isFinite(kwh) ? kwh : NaN,
+        reading_date: readingDateRaw,
     };
 }
 
@@ -385,6 +398,15 @@ async function createMeter(req, res) {
             ]
         );
 
+        try {
+            await notifyAdmins({
+                title: "New Meter Added",
+                body: `Meter #${result.insertId} (${payload.meter_number}) was assigned to user #${resolvedUserId}.`,
+            });
+        } catch (notifyErr) {
+            console.warn("createMeter admin notification failed:", notifyErr.message);
+        }
+
         res.json({ id: result.insertId });
     } catch (err) {
         console.error("createMeter error:", err);
@@ -445,6 +467,156 @@ async function deleteMeter(req, res) {
     }
 }
 
+async function getAllMeterReadings(req, res) {
+    try {
+        const [rows] = await db.query(
+            `SELECT
+                mr.id,
+                mr.meter_id,
+                m.meter_number,
+                u.full_name AS user_name,
+                mr.kwh,
+                mr.reading_date
+             FROM meter_readings mr
+             JOIN meters m ON mr.meter_id = m.id
+             JOIN users u ON m.user_id = u.id
+             ORDER BY mr.reading_date DESC, mr.id DESC`
+        );
+
+        res.json(rows);
+    } catch (err) {
+        console.error("getAllMeterReadings error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+}
+
+async function getMeterReadingById(req, res) {
+    try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ message: "Invalid reading id" });
+        }
+
+        const [rows] = await db.query(
+            `SELECT
+                mr.id,
+                mr.meter_id,
+                m.meter_number,
+                u.full_name AS user_name,
+                mr.kwh,
+                mr.reading_date
+             FROM meter_readings mr
+             JOIN meters m ON mr.meter_id = m.id
+             JOIN users u ON m.user_id = u.id
+             WHERE mr.id = ?
+             LIMIT 1`,
+            [id]
+        );
+
+        if (!rows.length) {
+            return res.status(404).json({ message: "Meter reading not found" });
+        }
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error("getMeterReadingById error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+}
+
+async function createMeterReading(req, res) {
+    try {
+        const payload = normalizeReadingPayload(req.body);
+
+        if (!Number.isInteger(payload.meter_id) || payload.meter_id <= 0) {
+            return res.status(400).json({ message: "Valid meter_id is required" });
+        }
+        if (!Number.isFinite(payload.kwh) || payload.kwh < 0) {
+            return res.status(400).json({ message: "Valid kwh is required" });
+        }
+        if (!payload.reading_date) {
+            return res.status(400).json({ message: "reading_date is required" });
+        }
+
+        const [[meterExists]] = await db.query("SELECT id FROM meters WHERE id = ? LIMIT 1", [payload.meter_id]);
+        if (!meterExists) {
+            return res.status(404).json({ message: "Meter not found" });
+        }
+
+        const [result] = await db.query(
+            `INSERT INTO meter_readings (meter_id, kwh, reading_date)
+             VALUES (?, ?, ?)`,
+            [payload.meter_id, payload.kwh, payload.reading_date]
+        );
+
+        res.status(201).json({ id: result.insertId });
+    } catch (err) {
+        console.error("createMeterReading error:", err);
+        res.status(500).json({ message: err.sqlMessage || err.message || "Server error" });
+    }
+}
+
+async function updateMeterReading(req, res) {
+    try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ message: "Invalid reading id" });
+        }
+
+        const payload = normalizeReadingPayload(req.body);
+
+        if (!Number.isInteger(payload.meter_id) || payload.meter_id <= 0) {
+            return res.status(400).json({ message: "Valid meter_id is required" });
+        }
+        if (!Number.isFinite(payload.kwh) || payload.kwh < 0) {
+            return res.status(400).json({ message: "Valid kwh is required" });
+        }
+        if (!payload.reading_date) {
+            return res.status(400).json({ message: "reading_date is required" });
+        }
+
+        const [[meterExists]] = await db.query("SELECT id FROM meters WHERE id = ? LIMIT 1", [payload.meter_id]);
+        if (!meterExists) {
+            return res.status(404).json({ message: "Meter not found" });
+        }
+
+        const [result] = await db.query(
+            `UPDATE meter_readings
+             SET meter_id = ?, kwh = ?, reading_date = ?
+             WHERE id = ?`,
+            [payload.meter_id, payload.kwh, payload.reading_date, id]
+        );
+
+        if (!result.affectedRows) {
+            return res.status(404).json({ message: "Meter reading not found" });
+        }
+
+        res.json({ message: "Meter reading updated" });
+    } catch (err) {
+        console.error("updateMeterReading error:", err);
+        res.status(500).json({ message: err.sqlMessage || err.message || "Server error" });
+    }
+}
+
+async function deleteMeterReading(req, res) {
+    try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ message: "Invalid reading id" });
+        }
+
+        const [result] = await db.query("DELETE FROM meter_readings WHERE id = ?", [id]);
+        if (!result.affectedRows) {
+            return res.status(404).json({ message: "Meter reading not found" });
+        }
+
+        res.json({ message: "Meter reading deleted" });
+    } catch (err) {
+        console.error("deleteMeterReading error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+}
+
 module.exports = {
     getAllMeters,
     exportMetersXlsx,
@@ -453,4 +625,9 @@ module.exports = {
     createMeter,
     updateMeter,
     deleteMeter,
+    getAllMeterReadings,
+    getMeterReadingById,
+    createMeterReading,
+    updateMeterReading,
+    deleteMeterReading,
 };

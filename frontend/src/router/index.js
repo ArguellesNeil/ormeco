@@ -5,6 +5,7 @@ import Login from "../views/Login.vue";
 import Dashboard from "../views/Dashboard.vue";
 import Users from "../views/Users.vue";
 import Meters from "../views/Meters.vue";
+import MeterReadings from "../views/MeterReadings.vue";
 import Incidents from "../views/Incidents.vue";
 import Benefits from "../views/Benefits.vue";
 import BillingRates from "../views/BillingRates.vue";
@@ -21,6 +22,7 @@ const routes = [
     { path: "/stats", component: Dashboard },
     { path: "/users", component: Users },
     { path: "/meters", component: Meters },
+    { path: "/meters/readings", component: MeterReadings },
     { path: "/incidents", component: Incidents },
     { path: "/benefits", component: Benefits },
     { path: "/billing-rates", component: BillingRates },

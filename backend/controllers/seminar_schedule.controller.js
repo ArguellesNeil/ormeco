@@ -41,11 +41,14 @@ async function getAllScheduleRequests(req, res) {
     `;
 
         const [rows] = hasStatusFilter ? await db.query(sql, [statusFilter]) : await db.query(sql);
+        
+        const [[todayRow]] = await db.query("SELECT DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS today_date");
+        const todayDate = todayRow && todayRow.today_date ? String(todayRow.today_date) : "";
 
-        return res.json(rows);
+        return res.json({ rows, today_date: todayDate });
     } catch (err) {
         console.error("getAllScheduleRequests error:", err);
-        return res.status(500).json({ message: "Server error" });
+        return res.status(500).json({ message: "Server error", rows: [], today_date: "" });
     }
 }
 
@@ -64,9 +67,23 @@ async function updateScheduleRequestStatus(req, res) {
             return res.status(400).json({ message: "Invalid status" });
         }
 
-        const [existing] = await db.query("SELECT id FROM seminar_schedule_requests WHERE id = ? LIMIT 1", [id]);
-        if (!existing.length) {
+        const [existingRows] = await db.query("SELECT id, seminar_date, status FROM seminar_schedule_requests WHERE id = ? LIMIT 1", [id]);
+        if (!existingRows.length) {
             return res.status(404).json({ message: "Schedule request not found" });
+        }
+
+        const existingRow = existingRows[0];
+
+        // If approving, enforce daily capacity limit (50 approved per date)
+        if (status === "approved" && String(existingRow.status || "").toLowerCase() !== "approved") {
+            const [countRows] = await db.query(
+                "SELECT COUNT(*) AS cnt FROM seminar_schedule_requests WHERE seminar_date = ? AND status = 'approved'",
+                [existingRow.seminar_date]
+            );
+            const cnt = (Array.isArray(countRows) && countRows[0] && Number(countRows[0].cnt)) || 0;
+            if (cnt >= 50) {
+                return res.status(400).json({ message: "Cannot approve: selected date has reached maximum approved participants (50)." });
+            }
         }
 
         await db.query(

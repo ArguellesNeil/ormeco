@@ -37,6 +37,46 @@ router.post(
   metersController.importMetersXlsx
 );
 
+// GET all meter readings
+router.get(
+  "/readings",
+  authMiddleware,
+  adminOnly,
+  metersController.getAllMeterReadings
+);
+
+// GET meter reading by ID
+router.get(
+  "/readings/:id",
+  authMiddleware,
+  adminOnly,
+  metersController.getMeterReadingById
+);
+
+// CREATE meter reading
+router.post(
+  "/readings",
+  authMiddleware,
+  adminOnly,
+  metersController.createMeterReading
+);
+
+// UPDATE meter reading
+router.put(
+  "/readings/:id",
+  authMiddleware,
+  adminOnly,
+  metersController.updateMeterReading
+);
+
+// DELETE meter reading
+router.delete(
+  "/readings/:id",
+  authMiddleware,
+  adminOnly,
+  metersController.deleteMeterReading
+);
+
 // GET meter by ID
 router.get(
   "/:id",
