@@ -16,8 +16,11 @@ function authMiddleware(req, res, next) {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        // e.g. { id, email, role }
-        req.user = decoded;
+        // Normalize token payloads: support tokens that use `id` or `user_id`.
+        // e.g. admin tokens: { id, email, role }
+        // mobile QR tokens: { user_id, role, member_code }
+        const normalized = Object.assign({}, decoded, { id: decoded.id || decoded.user_id });
+        req.user = normalized;
         next();
     } catch (err) {
         const isExpired = err && err.name === "TokenExpiredError";

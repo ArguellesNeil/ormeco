@@ -9,4 +9,9 @@ router.get("/system", authMiddleware, adminOnly, controller.getSystemSettings);
 router.get("/audit-logs", authMiddleware, adminOnly, controller.getAuditLogs);
 router.put("/system", authMiddleware, adminOnly, controller.updateSystemSettings);
 
+// Maintenance management
+router.get("/maintenance/status", authMiddleware, adminOnly, controller.getMaintenanceStatus);
+router.post("/maintenance/start", authMiddleware, adminOnly, controller.updateMaintenanceStatus);
+router.post("/maintenance/stop", authMiddleware, adminOnly, controller.disableMaintenance);
+
 module.exports = router;

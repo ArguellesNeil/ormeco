@@ -655,7 +655,8 @@ const trendRows = computed(() => {
   const labels = report.value.labels || [];
   const trends = report.value.trends || {};
 
-  return labels.map((label, idx) => {
+  // Build rows from labels and trends
+  const rows = labels.map((label, idx) => {
     const users = Number(trends.users?.[idx] || 0);
     const meters = Number(trends.meters?.[idx] || 0);
     const incidents = Number(trends.incidents?.[idx] || 0);
@@ -671,6 +672,19 @@ const trendRows = computed(() => {
       total: users + meters + incidents + seminars + announcements,
     };
   });
+
+  // Sort by label (date) to ensure consistent chronological order
+  const parseDate = (label) => {
+    if (!label) return new Date(0);
+    const d = new Date(String(label));
+    if (!Number.isNaN(d.getTime())) return d;
+    const m = String(label).match(/^(\d{4})-(\d{2})/);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, 1);
+    return new Date(0);
+  };
+
+  rows.sort((a, b) => parseDate(a.label) - parseDate(b.label));
+  return rows;
 });
 
 const search = ref("");
@@ -1469,7 +1483,10 @@ const exportPdf = async () => {
   };
   const periodUnit = periodUnitMap[period.value] || "period";
 
-  const rows = trendRows.value || [];
+  // Ensure trend rows are ordered by date so "latest" and window totals are accurate
+  // Use pre-sorted trendRows for consistent ordering across on-screen and PDF display
+  const rows = trendRows.value;
+
   const firstRow = rows.length ? rows[0] : null;
   const latestRow = rows.length ? rows[rows.length - 1] : null;
   const previousRow = rows.length > 1 ? rows[rows.length - 2] : null;
@@ -1499,14 +1516,6 @@ const exportPdf = async () => {
     announcements: "Announcements",
   };
 
-  const getTopCategory = (totals) => {
-    const entries = Object.entries(totals)
-      .filter(([key]) => key !== "total")
-      .map(([key, value]) => ({ key, value: Number(value || 0) }))
-      .sort((a, b) => b.value - a.value);
-    return entries.length ? entries[0] : null;
-  };
-
   const latestCategoryTotals = latestRow
     ? {
         users: Number(latestRow.users || 0),
@@ -1517,46 +1526,81 @@ const exportPdf = async () => {
       }
     : null;
 
-  const topLatest = latestCategoryTotals ? getTopCategory({ ...latestCategoryTotals, total: 0 }) : null;
-  const topOverall = getTopCategory(windowTotals);
+  const previousCategoryTotals = previousRow
+    ? {
+        users: Number(previousRow.users || 0),
+        meters: Number(previousRow.meters || 0),
+        incidents: Number(previousRow.incidents || 0),
+        seminars: Number(previousRow.seminars || 0),
+        announcements: Number(previousRow.announcements || 0),
+      }
+    : null;
+
+  const pctChange = (curr, prev) => {
+    if (!previousRow) return null;
+    if (prev === 0) return curr === 0 ? 0 : 100;
+    return Math.round(((curr - prev) / Math.max(1, prev)) * 100);
+  };
+
+  const categoryChanges = latestCategoryTotals && previousCategoryTotals
+    ? Object.keys(latestCategoryTotals).map((k) => ({
+        key: k,
+        curr: latestCategoryTotals[k],
+        prev: previousCategoryTotals[k] || 0,
+        pct: pctChange(latestCategoryTotals[k], previousCategoryTotals[k] || 0),
+      }))
+    : [];
+
+  const getTop = (obj) => {
+    const entries = Object.entries(obj).map(([k, v]) => ({ key: k, value: Number(v || 0) }));
+    entries.sort((a, b) => b.value - a.value);
+    return entries.length ? entries[0] : null;
+  };
+
+  const topLatest = latestCategoryTotals ? getTop(latestCategoryTotals) : null;
+  const topOverall = getTop({ users: windowTotals.users, meters: windowTotals.meters, incidents: windowTotals.incidents, seminars: windowTotals.seminars, announcements: windowTotals.announcements });
 
   const latestTotal = Number(latestRow?.total || 0);
   const previousTotal = Number(previousRow?.total || 0);
   const delta = latestTotal - previousTotal;
 
-  let deltaText = "no previous period data for comparison";
-  if (previousRow) {
-    if (delta > 0) {
-      deltaText = `up by ${delta.toLocaleString("en-US")} vs ${formatTrendLabelForPdf(previousRow.label)}`;
-    } else if (delta < 0) {
-      deltaText = `down by ${Math.abs(delta).toLocaleString("en-US")} vs ${formatTrendLabelForPdf(previousRow.label)}`;
-    } else {
-      deltaText = `unchanged vs ${formatTrendLabelForPdf(previousRow.label)}`;
-    }
-  }
+  const formatChange = (n) => (n > 0 ? `+${n.toLocaleString("en-US")}` : n === 0 ? "0" : `${n.toLocaleString("en-US")}`);
 
+  // Build summary based ONLY on visible tables and graphs data
   const shortSummaryBullets = [
-    `Selected ${periodLabel.value.toLowerCase()} window (${rangeLabel}) recorded ${windowTotals.total.toLocaleString("en-US")} total updates across all monitored modules.`,
-    latestRow
-      ? `Latest ${periodUnit} (${formatTrendLabelForPdf(latestRow.label)}) logged ${latestTotal.toLocaleString("en-US")} updates, ${deltaText}.`
-      : `No latest ${periodUnit} activity is available for the selected window.`,
-    topLatest
-      ? `Top activity stream in the latest ${periodUnit}: ${categoryNameMap[topLatest.key]} (${topLatest.value.toLocaleString("en-US")}).`
-      : `No dominant activity stream was detected for the latest ${periodUnit}.`,
-    topOverall
-      ? `Overall top stream for this ${periodLabel.value.toLowerCase()} report: ${categoryNameMap[topOverall.key]} (${topOverall.value.toLocaleString("en-US")}). Open incidents: ${Number(summary.open_incidents || 0).toLocaleString("en-US")}; pending benefits: ${Number(summary.pending_benefits || 0).toLocaleString("en-US")}.`
-      : `Operational queue currently shows ${Number(summary.open_incidents || 0).toLocaleString("en-US")} open incidents and ${Number(summary.pending_benefits || 0).toLocaleString("en-US")} pending benefit applications.`,
+    `Activity Window: ${rangeLabel}`,
+    `Total Updates: ${windowTotals.total.toLocaleString("en-US")} (Users: ${windowTotals.users.toLocaleString("en-US")}, Meters: ${windowTotals.meters.toLocaleString("en-US")}, Incidents: ${windowTotals.incidents.toLocaleString("en-US")}, Seminars: ${windowTotals.seminars.toLocaleString("en-US")}, Announcements: ${windowTotals.announcements.toLocaleString("en-US")})`,
   ];
 
+  // Add benefit distribution summary from graph
+  const benefitSummary = (report.value?.benefitDistribution || [])
+    .filter((b) => Number(b.count || 0) > 0)
+    .slice(0, 3)
+    .map((b) => `${b.name}: ${Number(b.count || 0)}`)
+    .join(", ");
+  if (benefitSummary) {
+    shortSummaryBullets.push(`Approved Benefits: ${benefitSummary}`);
+  }
+
+  // Add incident status from status breakdown
+  const incidentStatuses = (report.value?.statusBreakdown?.incidents || [])
+    .filter((s) => Number(s.total || 0) > 0)
+    .map((s) => `${s.status}: ${s.total}`)
+    .join(", ");
+  if (incidentStatuses) {
+    shortSummaryBullets.push(`Incident Status: ${incidentStatuses}`);
+  }
+
+  // Add recent activities count from table
+  const recentActivityCount = Array.isArray(report.value?.recentActivities) ? report.value.recentActivities.length : 0;
+  if (recentActivityCount > 0) {
+    shortSummaryBullets.push(`Recent Activities Logged: ${recentActivityCount}`);
+  }
+
   const kpiCards = [
-    { label: "Window Updates", value: windowTotals.total.toLocaleString("en-US") },
-    { label: `Latest ${periodLabel.value}`, value: latestTotal.toLocaleString("en-US") },
-    {
-      label: "Change vs Prev",
-      value: previousRow
-        ? `${delta > 0 ? "+" : ""}${delta.toLocaleString("en-US")}`
-        : "N/A",
-    },
+    { label: "Total Updates", value: windowTotals.total.toLocaleString("en-US") },
+    { label: "Total Users", value: windowTotals.users.toLocaleString("en-US") },
+    { label: "Total Incidents", value: windowTotals.incidents.toLocaleString("en-US") },
   ];
 
   const bulletWrapWidth = contentWidth - 34;

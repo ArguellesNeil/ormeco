@@ -159,6 +159,68 @@
         </p>
       </article>
 
+      <article class="panel" :class="{ 'maintenance-active': maintenanceStatus.active }">
+        <div class="panel-header">
+          <h3>🔧 Maintenance Mode</h3>
+          <span v-if="maintenanceStatus.active" class="chip alert">ACTIVE</span>
+          <span v-else class="chip">Operations</span>
+        </div>
+
+        <div v-if="maintenanceStatus.active" class="maintenance-alert">
+          <p><strong>⚠️ App is currently under maintenance</strong></p>
+          <p class="small-text">Started: {{ formatDateTime(maintenanceStatus.startTime) }}</p>
+          <p class="small-text">
+            Ends: {{ formatDateTime(maintenanceStatus.estimatedEndTime) }}
+          </p>
+          <p class="small-text">Duration: {{ maintenanceStatus.durationMinutes }} minutes</p>
+          <p class="small-text">{{ maintenanceStatus.message }}</p>
+        </div>
+
+        <label class="field">
+          <span>Maintenance Duration (minutes)</span>
+          <select v-model.number="maintenanceForm.durationMinutes">
+            <option :value="30">30 minutes</option>
+            <option :value="60">1 hour</option>
+            <option :value="120">2 hours</option>
+            <option :value="240">4 hours</option>
+            <option :value="480">8 hours</option>
+            <option :value="1440">1 day</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Maintenance Message</span>
+          <textarea
+            v-model="maintenanceForm.message"
+            rows="3"
+            placeholder="Tell users why the app is under maintenance..."
+          />
+        </label>
+
+        <div class="modal-actions">
+          <button
+            v-if="!maintenanceStatus.active"
+            class="btn btn-alert"
+            :disabled="startingMaintenance"
+            @click="startMaintenance"
+          >
+            {{ startingMaintenance ? "Starting..." : "Start Maintenance" }}
+          </button>
+          <button
+            v-else
+            class="btn btn-success"
+            :disabled="stoppingMaintenance"
+            @click="stopMaintenance"
+          >
+            {{ stoppingMaintenance ? "Stopping..." : "Stop Maintenance" }}
+          </button>
+        </div>
+
+        <p class="hint">
+          When maintenance is active, all mobile app users will be blocked with a 503 status and see your maintenance message.
+        </p>
+      </article>
+
       <article class="panel">
         <div class="panel-header">
           <h3>System Thresholds</h3>
@@ -175,10 +237,7 @@
           <input v-model.number="settings.thresholds.benefitsPerDayAlert" type="number" min="1" />
         </label>
 
-        <label class="field">
-          <span>High Bill Amount Alert</span>
-          <input v-model.number="settings.thresholds.highBillAmount" type="number" min="1" step="0.01" />
-        </label>
+        <!-- High Bill Amount Alert removed because billing range/estimations not available -->
 
         <label class="field">
           <span>Seminar Alert Window (days)</span>
@@ -590,6 +649,22 @@ const loadBenefits = async () => {
   benefits.value = data || [];
 };
 
+const maintenanceStatus = reactive({
+  active: false,
+  startTime: null,
+  durationMinutes: 30,
+  estimatedEndTime: null,
+  message: "",
+});
+
+const maintenanceForm = reactive({
+  durationMinutes: 30,
+  message: "The mobile app is currently under maintenance. Please try again later.",
+});
+
+const startingMaintenance = ref(false);
+const stoppingMaintenance = ref(false);
+
 const loadBillingRates = async () => {
   const { data } = await api.get("/billing/rates");
   billingRates.value = data || [];
@@ -638,7 +713,14 @@ const resetAuditFilters = async () => {
 };
 
 const loadAll = async () => {
-  await Promise.all([loadSettings(), loadBenefits(), loadBillingRates(), loadAuditUsers(), loadAuditLogs()]);
+  await Promise.all([
+    loadSettings(),
+    loadBenefits(),
+    loadBillingRates(),
+    loadAuditUsers(),
+    loadAuditLogs(),
+    loadMaintenanceStatus(),
+  ]);
 };
 
 const saveSettings = async () => {
@@ -684,6 +766,26 @@ const saveSettings = async () => {
   }
 };
 
+const loadMaintenanceStatus = async () => {
+  try {
+    const { data } = await api.get("/settings/maintenance/status");
+    const startTime = data?.startTime || null;
+    const durationMinutes = Number(data?.durationMinutes || 30);
+
+    Object.assign(maintenanceStatus, {
+      active: !!data?.enabled && !!startTime,
+      startTime,
+      durationMinutes,
+      estimatedEndTime: startTime
+        ? new Date(new Date(startTime).getTime() + durationMinutes * 60 * 1000).toISOString()
+        : null,
+      message: data?.message || "",
+    });
+  } catch (err) {
+    console.error("Failed to load maintenance status:", err);
+  }
+};
+
 const sendScheduledReportNow = async () => {
   sendingScheduledReport.value = true;
   try {
@@ -694,6 +796,38 @@ const sendScheduledReportNow = async () => {
     alert(err?.response?.data?.message || "Failed to send scheduled report email.");
   } finally {
     sendingScheduledReport.value = false;
+  }
+};
+
+const startMaintenance = async () => {
+  startingMaintenance.value = true;
+  try {
+    await api.post("/settings/maintenance/start", {
+      enabled: true,
+      durationMinutes: maintenanceForm.durationMinutes,
+      message: maintenanceForm.message,
+    });
+    await loadMaintenanceStatus();
+    alert("Maintenance mode started.");
+  } catch (err) {
+    alert(err?.response?.data?.message || "Failed to start maintenance mode.");
+  } finally {
+    startingMaintenance.value = false;
+  }
+};
+
+const stopMaintenance = async () => {
+  if (!confirm("Stop maintenance mode and restore the mobile app now?")) return;
+
+  stoppingMaintenance.value = true;
+  try {
+    await api.post("/settings/maintenance/stop");
+    await loadMaintenanceStatus();
+    alert("Maintenance mode stopped.");
+  } catch (err) {
+    alert(err?.response?.data?.message || "Failed to stop maintenance mode.");
+  } finally {
+    stoppingMaintenance.value = false;
   }
 };
 
@@ -1575,5 +1709,58 @@ onMounted(loadAll);
   .audit-details {
     min-width: 260px;
   }
+}
+
+.panel.maintenance-active {
+  border: 2px solid var(--danger);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--danger) 6%, var(--bg-soft) 94%),
+    color-mix(in srgb, var(--danger) 4%, var(--bg-soft) 96%)
+  );
+}
+
+.maintenance-alert {
+  padding: 14px;
+  border-left: 4px solid var(--danger);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger) 8%, var(--bg-soft) 92%);
+  margin-bottom: 16px;
+}
+
+.maintenance-alert p {
+  margin: 0 0 6px;
+  color: var(--text-primary);
+}
+
+.maintenance-alert .small-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+
+.btn-alert {
+  background: linear-gradient(135deg, var(--danger), #c84949);
+  color: #fff;
+  border-color: var(--danger);
+}
+
+.btn-alert:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #fff;
+}
+
+.btn-success:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.chip.alert {
+  background: color-mix(in srgb, var(--danger) 18%, transparent 82%);
+  color: var(--danger);
+  font-weight: 800;
 }
 </style>

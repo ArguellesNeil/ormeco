@@ -25,9 +25,19 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (_req, file, cb) => {
-    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/bmp", "image/svg+xml"];
+    const allowed = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/bmp",
+        "image/svg+xml",
+        "text/plain",
+        "text/markdown",
+    ];
     if (allowed.includes(file.mimetype)) return cb(null, true);
-    return cb(new Error("Invalid file type. Only image files are allowed."), false);
+    return cb(new Error("Invalid file type. Only image and text files are allowed."), false);
 };
 
 const upload = multer({
@@ -45,11 +55,29 @@ router.get("/", authMiddleware, adminOnly, announcementController.getAll);
 // VIEW announcement attachment image
 router.get("/attachments/:fileName", announcementController.getAttachmentFile);
 
+function normalizeUploadedFiles(req, _res, next) {
+    const uploaded = req.files;
+    if (Array.isArray(uploaded)) {
+        req.files = uploaded;
+    } else if (uploaded && typeof uploaded === "object") {
+        req.files = Object.values(uploaded).flat();
+    } else {
+        req.files = [];
+    }
+    next();
+}
+
+const announcementUpload = upload.fields([
+    { name: "photos", maxCount: 10 },
+    { name: "files", maxCount: 10 },
+    { name: "files[]", maxCount: 10 },
+]);
+
 // CREATE announcement
-router.post("/", authMiddleware, adminOnly, upload.array("photos", 10), announcementController.create);
+router.post("/", authMiddleware, adminOnly, announcementUpload, normalizeUploadedFiles, announcementController.create);
 
 // UPDATE announcement
-router.put("/:id", authMiddleware, adminOnly, upload.array("photos", 10), announcementController.update);
+router.put("/:id", authMiddleware, adminOnly, announcementUpload, normalizeUploadedFiles, announcementController.update);
 
 // DELETE announcement
 router.delete("/:id", authMiddleware, adminOnly, announcementController.remove);

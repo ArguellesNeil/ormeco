@@ -8,42 +8,49 @@ const incidentsController = require("../controllers/incidents.controller");
 
 // GET all incidents
 router.get(
-  "/",
-  authMiddleware,
-  adminOnly,
-  incidentsController.getAllIncidents
+    "/",
+    authMiddleware,
+    adminOnly,
+    incidentsController.getAllIncidents
 );
 
 // GET incident by ID
 router.get(
-  "/:id",
-  authMiddleware,
-  adminOnly,
-  incidentsController.getIncidentById
+    "/:id",
+    authMiddleware,
+    adminOnly,
+    incidentsController.getIncidentById
+);
+
+// GET incident evidence file
+router.get(
+    "/:id/evidence/:fileName",
+    authMiddleware,
+    incidentsController.getIncidentEvidenceFile
 );
 
 // CREATE incident
 router.post(
-  "/",
-  authMiddleware,
-  adminOnly,
-  incidentsController.createIncident
+    "/",
+    authMiddleware,
+    adminOnly,
+    incidentsController.createIncident
 );
 
 // UPDATE incident status
 router.put(
-  "/:id/status",
-  authMiddleware,
-  adminOnly,
-  incidentsController.updateIncidentStatus
+    "/:id/status",
+    authMiddleware,
+    adminOnly,
+    incidentsController.updateIncidentStatus
 );
 
 // DELETE incident
 router.delete(
-  "/:id",
-  authMiddleware,
-  adminOnly,
-  incidentsController.deleteIncident
+    "/:id",
+    authMiddleware,
+    adminOnly,
+    incidentsController.deleteIncident
 );
 
 module.exports = router;

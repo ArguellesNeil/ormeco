@@ -2,7 +2,8 @@ const db = require("../config/db");
 const jwt = require("jsonwebtoken");
 const { getSecurityPolicies } = require("../services/security-policy.service");
 const { logAuditEvent } = require("../services/audit-log.service");
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 exports.login = async(req, res) => {
     try {

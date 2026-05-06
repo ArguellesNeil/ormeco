@@ -3,7 +3,6 @@ const db = require("../config/db");
 const DEFAULT_THRESHOLDS = {
     incidentsPerDayAlert: 5,
     benefitsPerDayAlert: 10,
-    highBillAmount: 5000,
     seminarWindowDays: 7,
 };
 
@@ -21,7 +20,7 @@ async function getWorkflowThresholds() {
         return {
             incidentsPerDayAlert: Math.max(1, Number(parsed.incidentsPerDayAlert || DEFAULT_THRESHOLDS.incidentsPerDayAlert)),
             benefitsPerDayAlert: Math.max(1, Number(parsed.benefitsPerDayAlert || DEFAULT_THRESHOLDS.benefitsPerDayAlert)),
-            highBillAmount: Math.max(1, Number(parsed.highBillAmount || DEFAULT_THRESHOLDS.highBillAmount)),
+            // highBillAmount removed — billing estimations not available in this system
             seminarWindowDays: Math.max(1, Number(parsed.seminarWindowDays || DEFAULT_THRESHOLDS.seminarWindowDays)),
         };
     } catch (_) {
@@ -36,6 +35,21 @@ function classifyNotification(title = "", body = "") {
     if (text.includes("seminar") || text.includes("schedule")) return "seminars";
     if (text.includes("system alert") || text.includes("utility") || text.includes("unusual")) return "system";
     return "general";
+}
+
+function resolveNotificationTargetPath(type) {
+    switch (type) {
+        case "benefits":
+            return "/benefit-approvals";
+        case "incidents":
+            return "/incidents";
+        case "seminars":
+            return "/seminar-scheduling";
+        case "system":
+            return "/system-settings";
+        default:
+            return "/stats";
+    }
 }
 
 async function ensureAlert(userId, title, body) {
@@ -114,23 +128,7 @@ async function syncWorkflowAlerts(userId) {
         );
     }
 
-    const [
-        [highBills]
-    ] = await db.query(
-        `
-      SELECT COUNT(*) AS total, MAX(estimated_amount) AS max_amount
-      FROM billing_estimations
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                AND estimated_amount >= ?
-        `, [thresholds.highBillAmount]
-    );
-    if (Number(highBills.total || 0) > 0) {
-        await ensureAlert(
-            userId,
-            "System Alert: High Utility Bills",
-            `${highBills.total} high bill estimation(s) detected this month. Peak estimate: ${Number(highBills.max_amount || 0).toFixed(2)}.`
-        );
-    }
+    // High bill alerts removed — system does not have billing range/estimations
 
     const [
         [activitySpike]
@@ -191,7 +189,11 @@ exports.getNotifications = async(req, res) => {
                 ...row,
                 type: classifyNotification(row.title, row.body),
             }))
-            .filter((row) => (typeFilter === "all" ? true : row.type === typeFilter));
+            .filter((row) => (typeFilter === "all" ? true : row.type === typeFilter))
+            .map((row) => ({
+                ...row,
+                target_path: resolveNotificationTargetPath(row.type),
+            }));
 
         const summary = {
             total: items.length,

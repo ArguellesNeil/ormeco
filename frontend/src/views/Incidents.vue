@@ -19,7 +19,7 @@
       idKey="id"
       :showActions="true"
       @edit="openEditStatus"
-      @delete="noop"
+      @delete="removeIncident"
     >
       <template #cell-evidence_count="{ row }">
         <button
@@ -45,17 +45,17 @@
           <div class="evidence-panel">
             <p><strong>Evidence:</strong></p>
             <div v-if="form.evidence_items.length" class="evidence-grid">
-              <a
+              <button
                 v-for="(item, idx) in form.evidence_items"
                 :key="`modal-evidence-${form.id}-${idx}`"
-                class="evidence-item"
-                :href="item.url"
-                target="_blank"
-                rel="noopener noreferrer"
+                type="button"
+                class="evidence-item evidence-button"
+                :disabled="evidenceBusy"
+                @click="viewEvidenceFile(item)"
               >
                 <img v-if="isImageUrl(item.url)" :src="item.url" :alt="`Evidence ${idx + 1}`" loading="lazy" />
                 <span v-else class="evidence-file">Open file {{ idx + 1 }}</span>
-              </a>
+              </button>
             </div>
             <p v-else class="evidence-empty">No evidence attached for this report.</p>
           </div>
@@ -94,17 +94,17 @@
         <p class="modal-subtitle">Reporter: {{ evidenceContext.user_name || "N/A" }}</p>
 
         <div v-if="evidenceContext.items.length" class="evidence-grid">
-          <a
+          <button
             v-for="(item, idx) in evidenceContext.items"
             :key="`table-evidence-${evidenceContext.id}-${idx}`"
-            class="evidence-item"
-            :href="item.url"
-            target="_blank"
-            rel="noopener noreferrer"
+            type="button"
+            class="evidence-item evidence-button"
+            :disabled="evidenceBusy"
+            @click="viewEvidenceFile(item)"
           >
             <img v-if="isImageUrl(item.url)" :src="item.url" :alt="`Evidence ${idx + 1}`" loading="lazy" />
             <span v-else class="evidence-file">Open file {{ idx + 1 }}</span>
-          </a>
+          </button>
         </div>
         <p v-else class="evidence-empty">No evidence attached for this report.</p>
 
@@ -134,6 +134,7 @@ const filteredIncidents = computed(() => {
 });
 const showModal = ref(false);
 const showEvidenceModal = ref(false);
+const evidenceBusy = ref(false);
 
 const evidenceContext = ref({
   id: null,
@@ -142,6 +143,7 @@ const evidenceContext = ref({
 });
 
 const EVIDENCE_KEYS = [
+  "evidence_files",
   "evidence_url",
   "evidence_urls",
   "photo_url",
@@ -306,8 +308,46 @@ const saveStatus = async () => {
   await load();
 };
 
+const fetchEvidenceBlob = async (item) => {
+  const res = await api.get(item.url, {
+    responseType: "blob"
+  });
+  return res.data;
+};
+
+const viewEvidenceFile = async (item) => {
+  if (!item || !item.url) return;
+
+  evidenceBusy.value = true;
+  try {
+    const blob = await fetchEvidenceBlob(item);
+    const blobUrl = window.URL.createObjectURL(blob);
+    window.open(blobUrl, "_blank", "noopener,noreferrer");
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 12000);
+  } catch (err) {
+    alert((err && err.response && err.response.data && err.response.data.message) || err.message || "Unable to open evidence");
+  } finally {
+    evidenceBusy.value = false;
+  }
+};
+
+const removeIncident = async (row) => {
+  if (!row || !row.id) return;
+  if (!confirm(`Delete incident #${row.id}?`)) return;
+
+  await api.delete(`/incidents/${row.id}`);
+
+  if (showModal.value && form.value.id === row.id) {
+    showModal.value = false;
+  }
+  if (showEvidenceModal.value && evidenceContext.value.id === row.id) {
+    showEvidenceModal.value = false;
+  }
+
+  await load();
+};
+
 const close = () => (showModal.value = false);
-const noop = () => {};
 
 onMounted(load);
 </script>
@@ -375,6 +415,19 @@ onMounted(load);
   background: #ffffff;
   min-height: 92px;
   overflow: hidden;
+}
+
+.evidence-button {
+  width: 100%;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  background: #ffffff;
+}
+
+.evidence-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .evidence-item img {

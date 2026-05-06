@@ -178,11 +178,11 @@
 
           <template #cell-actions="{ row }">
             <div class="row-actions">
-              <button class="btn-edit row-btn" @click="toggleRead(row)">
+              <button class="btn-edit row-btn" @click="readAndOpen(row)">
                 <svg class="btn-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M4 12L9 17L20 6" />
                 </svg>
-                {{ row.is_read ? "Mark Unread" : "Mark Read" }}
+                {{ row.is_read ? "Open" : "Read" }}
               </button>
               <button class="btn-delete row-btn" @click="remove(row)">
                 <svg class="btn-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -204,12 +204,14 @@
 
 <script setup>
 import { onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 import api from "../api";
 import DataTable from "../components/DataTable.vue";
 
 const loading = ref(false);
 const items = ref([]);
 const summary = ref(null);
+const router = useRouter();
 
 const filters = reactive({
   type: "all",
@@ -242,6 +244,20 @@ const SUMMARY_ICON_PATHS = {
   incidents: ["M12 4L21 20H3L12 4Z", "M12 10V14", "M12 17H12.01"],
   seminars: ["M7 3V6", "M17 3V6", "M4 9H20", "M6 5H18C19.1 5 20 5.9 20 7V19C20 20.1 19.1 21 18 21H6C4.9 21 4 20.1 4 19V7C4 5.9 4.9 5 6 5Z"],
   system: ["M13 3L6 13H11L10 21L18 10H13L13 3Z"],
+};
+
+const TARGET_PAGE_BY_TYPE = {
+  benefits: "/benefit-approvals",
+  incidents: "/incidents",
+  seminars: "/seminar-scheduling",
+  system: "/system-settings",
+  general: "/stats",
+};
+
+const resolveNotificationTarget = (item) => {
+  if (!item) return "/stats";
+  if (item.target_path) return item.target_path;
+  return TARGET_PAGE_BY_TYPE[item.type] || "/stats";
 };
 
 const getSummaryIconPaths = (key) => SUMMARY_ICON_PATHS[key] || SUMMARY_ICON_PATHS.total;
@@ -301,12 +317,23 @@ const resetFilters = async () => {
   await load();
 };
 
-const toggleRead = async (item) => {
+const readAndOpen = async (item) => {
   try {
-    await api.patch(`/notifications/${item.id}/read`, {
-      is_read: !item.is_read,
+    const shouldMarkRead = !item.is_read;
+    if (shouldMarkRead) {
+      await api.patch(`/notifications/${item.id}/read`, {
+        is_read: true,
+      });
+    }
+
+    if (shouldMarkRead) {
+      await load();
+    }
+
+    await router.push({
+      path: resolveNotificationTarget(item),
+      query: { notification_id: String(item.id) },
     });
-    await load();
   } catch (err) {
     alert((err && err.response && err.response.data && err.response.data.message) || err.message || "Failed to update notification");
   }

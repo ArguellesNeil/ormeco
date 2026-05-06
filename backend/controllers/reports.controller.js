@@ -354,19 +354,41 @@ function getPeriodWindow(period) {
 async function getSeries({ table, dateColumn, labels, config, startAt, endAt, weekdayIndexes = [] }) {
     if (!labels.length) return [];
 
-    const bucketExpr = config.bucketExpr.split("%COL%").join(dateColumn);
+    let bucketExpr = config.bucketExpr.split("%COL%").join(dateColumn);
+    // Ensure bucket is returned as a string in the correct format for matching labels
+    // For DATE() results, explicitly cast to CHAR; for DATE_FORMAT, already returns string
+    if (bucketExpr.includes("DATE(") && !bucketExpr.includes("DATE_FORMAT")) {
+        // Replace DATE(...) with DATE_FORMAT(..., '%Y-%m-%d') to ensure consistent string format
+        bucketExpr = bucketExpr.replace(/DATE\(([^)]+)\)/, "DATE_FORMAT($1, '%Y-%m-%d')");
+    }
+    
     const filter = buildDateFilterClause(dateColumn, startAt, endAt, weekdayIndexes);
     const sql = `
     SELECT ${bucketExpr} AS bucket, COUNT(*) AS total
     FROM ${table}
     WHERE ${filter.clause}
-    GROUP BY bucket
+    GROUP BY ${bucketExpr}
     ORDER BY bucket
   `;
 
     const [rows] = await db.query(sql, filter.params);
-    const map = new Map(rows.map((r) => [String(r.bucket), Number(r.total)]));
-    return labels.map((label) => map.get(label) || 0);
+    // Normalize bucket strings (trim and ensure consistent format)
+    const map = new Map(rows.map((r) => {
+        const bucketStr = String(r.bucket).trim();
+        return [bucketStr, Number(r.total)];
+    }));
+    
+    // Return array with counts for each label; debug log if no data found
+    const result = labels.map((label) => map.get(label) || 0);
+    
+    // If all results are 0 and we have rows, log mismatch for debugging
+    if (result.every((v) => v === 0) && rows.length > 0) {
+        console.warn(`[Reports] getSeries mismatch for ${table}: got ${rows.length} rows but no label matches.`);
+        console.warn(`  Buckets from query:`, rows.slice(0, 3).map((r) => r.bucket));
+        console.warn(`  Expected labels:`, labels.slice(0, 3));
+    }
+    
+    return result;
 }
 
 async function getStatusBreakdown({ table, dateExpr, startAt, endAt, weekdayIndexes = [] }) {

@@ -28,6 +28,10 @@
           {{ row.attachments_count ? `View (${row.attachments_count})` : "None" }}
         </button>
       </template>
+
+      <template #cell-created_at="{ row }">
+        <span class="date-cell">{{ formatDateTime(row.created_at) }}</span>
+      </template>
     </DataTable>
 
     <div v-if="showModal" class="modal-overlay">
@@ -158,6 +162,25 @@ const toAbsoluteUrl = (url) => {
   if (/^(https?:)?\/\//i.test(raw) || raw.startsWith("data:")) return raw;
   if (raw.startsWith("/")) return `${backendOrigin}${raw}`;
   return `${backendOrigin}/${raw}`;
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "-";
+  try {
+    const date = new Date(String(value));
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true
+    });
+  } catch (_err) {
+    return String(value);
+  }
 };
 
 const form = ref({

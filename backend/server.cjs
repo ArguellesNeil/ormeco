@@ -1,4 +1,5 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const express = require("express");
 const cors = require("cors");
@@ -13,6 +14,12 @@ app.use(express.urlencoded({ extended: true }));
 /**
  * MOBILE ROUTES
  */
+app.use("/api/mobile", require("./routes/mobile.check_maintenance.routes.js"));
+
+// Apply maintenance middleware to all other mobile routes
+const { maintenanceMiddleware } = require("./middleware/maintenance.middleware");
+app.use("/api/mobile", maintenanceMiddleware);
+
 app.use("/api/mobile", require("./routes/mobile.signup.routes.js"));
 app.use("/api/mobile", require("./routes/mobile.login.routes.js"));
 app.use("/api/mobile", require("./routes/mobile.get_profile.routes.js"));
@@ -27,6 +34,7 @@ app.use("/api/mobile", require("./routes/mobile.seminar_schedule.routes"));
 app.use("/api/mobile", require("./routes/mobile.apply_benefit.routes.js"));
 app.use("/api/mobile", require("./routes/mobile.get_benefit_status.routes.js"));
 app.use("/api/mobile", require("./routes/mobile.generate_hash.routes.js"));
+app.use("/api/mobile", require("./routes/mobile.get_announcements.routes.js"));
 
 /**
  * WEB/ADMIN ROUTES

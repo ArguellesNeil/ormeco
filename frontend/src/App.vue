@@ -36,12 +36,25 @@
       </div>
     </div>
   </div>
+  <div v-if="showMaintenanceModal" class="maintenance-backdrop">
+    <div class="maintenance-modal" role="alertdialog" aria-live="assertive" aria-modal="true">
+      <h3>Scheduled Maintenance</h3>
+      <p class="maintenance-message">{{ maintenanceInfo.message }}</p>
+      <p v-if="maintenanceInfo.estimatedEndTime" class="maintenance-eta">
+        Expected back: {{ new Date(maintenanceInfo.estimatedEndTime).toLocaleString() }}
+      </p>
+      <div class="maintenance-actions">
+        <button class="btn btn-primary" @click="checkMaintenanceStatus">Retry Status</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "./store/auth";
+import api from "./api";
 import TopBar from "./components/TopBar.vue";
 import Sidebar from "./components/Sidebar.vue";
 import { syncThemeFromServer } from "./services/theme";
@@ -54,6 +67,9 @@ const WARNING_DURATION_MS = 60 * 1000;
 
 const showInactivityWarning = ref(false);
 const warningSecondsLeft = ref(60);
+const showMaintenanceModal = ref(false);
+const maintenanceInfo = ref({ message: "", startTime: null, estimatedEndTime: null });
+const isMobileClient = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|Mobile|Cordova|Capacitor/i.test(navigator.userAgent || "");
 
 let inactivityTimerId = null;
 let warningTimerId = null;
@@ -187,6 +203,11 @@ onMounted(() => {
     syncThemeFromServer();
     startInactivityGuard();
   }
+  // Only run maintenance checks for unauthenticated mobile clients
+  if (!auth.token && isMobileClient) {
+    checkMaintenanceStatus();
+    startMaintenancePoll();
+  }
 });
 
 watch(
@@ -195,10 +216,18 @@ watch(
     if (token) {
       syncThemeFromServer();
       startInactivityGuard();
+      // stop maintenance polling when admin logs in
+      stopMaintenancePoll();
+      showMaintenanceModal.value = false;
       return;
     }
 
     stopInactivityGuard();
+    // start maintenance polling when signed out (login screen) only on mobile clients
+    if (isMobileClient) {
+      checkMaintenanceStatus();
+      startMaintenancePoll();
+    }
   }
 );
 
@@ -213,7 +242,47 @@ watch(
 
 onBeforeUnmount(() => {
   stopInactivityGuard();
+  stopMaintenancePoll();
 });
+
+// Maintenance polling logic
+let maintenanceIntervalId = null;
+const MAINTENANCE_POLL_MS = 5000;
+
+async function checkMaintenanceStatus() {
+  try {
+    const resp = await api.get("/mobile/check-maintenance");
+    // If service returns 200 ok, ensure modal is hidden
+    // Only hide/show modal for unauthenticated mobile clients
+    if (!auth.token && isMobileClient) showMaintenanceModal.value = false;
+    maintenanceInfo.value = { message: "", startTime: null, estimatedEndTime: null };
+  } catch (err) {
+    const status = err && err.response && err.response.status;
+    if (status === 503) {
+      const data = (err.response && err.response.data) || {};
+      if (!auth.token && isMobileClient) showMaintenanceModal.value = true;
+      maintenanceInfo.value = {
+        message: data.message || "The mobile app is under maintenance",
+        startTime: data.startTime || data.maintenance && data.maintenance.startTime || null,
+        estimatedEndTime:
+          data.estimatedEndTime || (data.maintenance && data.maintenance.estimatedEndTime) || null,
+      };
+      // Do not force admin logout; admin panel should remain usable during maintenance.
+    }
+  }
+}
+
+function startMaintenancePoll() {
+  stopMaintenancePoll();
+  maintenanceIntervalId = window.setInterval(checkMaintenanceStatus, MAINTENANCE_POLL_MS);
+}
+
+function stopMaintenancePoll() {
+  if (maintenanceIntervalId) {
+    window.clearInterval(maintenanceIntervalId);
+    maintenanceIntervalId = null;
+  }
+}
 </script>
 
 <style>
@@ -309,6 +378,45 @@ onBeforeUnmount(() => {
   gap: 10px;
   margin-top: 18px;
 }
+
+.maintenance-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(8, 14, 26, 0.6);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.maintenance-modal {
+  width: min(520px, calc(100vw - 32px));
+  background: #ffffff;
+  border: 1px solid #d7e2ef;
+  border-radius: 14px;
+  box-shadow: 0 30px 80px rgba(6, 20, 35, 0.5);
+  padding: 24px;
+  text-align: center;
+}
+
+.maintenance-modal h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  color: #0f2942;
+}
+
+.maintenance-message {
+  color: #2f4359;
+  margin: 8px 0 12px 0;
+}
+
+.maintenance-eta {
+  color: #536b84;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.maintenance-actions { display:flex; justify-content:center }
 
 @media (max-width: 520px) {
   .session-warning-actions {

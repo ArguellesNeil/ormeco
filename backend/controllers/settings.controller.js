@@ -38,6 +38,12 @@ const DEFAULT_SETTINGS = {
         dayOfMonth: 1,
         recipients: "",
     },
+    maintenance: {
+        enabled: false,
+        startTime: null,
+        durationMinutes: 30,
+        message: "The mobile app is currently under maintenance. Please try again later.",
+    },
 };
 
 async function ensureSettingsTable() {
@@ -66,7 +72,7 @@ async function loadSettings() {
     await ensureSettingsTable();
 
     const [rows] = await db.query(
-        `SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?, ?, ?, ?)`, ["emailTemplates", "notificationPreferences", "thresholds", "appearance", "securityPolicies", "reportScheduling"]
+        `SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?, ?, ?, ?, ?)`, ["emailTemplates", "notificationPreferences", "thresholds", "appearance", "securityPolicies", "reportScheduling", "maintenance"]
     );
 
     const merged = {
@@ -76,6 +82,7 @@ async function loadSettings() {
         appearance: {...DEFAULT_SETTINGS.appearance },
         securityPolicies: {...DEFAULT_SETTINGS.securityPolicies },
         reportScheduling: {...DEFAULT_SETTINGS.reportScheduling },
+        maintenance: {...DEFAULT_SETTINGS.maintenance },
     };
 
     for (const row of rows) {
@@ -112,6 +119,10 @@ function sanitizePayload(payload = {}) {
         reportScheduling: {
             ...DEFAULT_SETTINGS.reportScheduling,
             ...(payload.reportScheduling || {}),
+        },
+        maintenance: {
+            ...DEFAULT_SETTINGS.maintenance,
+            ...(payload.maintenance || {}),
         },
     };
 
@@ -177,6 +188,14 @@ function sanitizePayload(payload = {}) {
     safe.reportScheduling.weekday = Math.min(6, Math.max(0, Number(safe.reportScheduling.weekday || 0)));
     safe.reportScheduling.dayOfMonth = Math.min(28, Math.max(1, Number(safe.reportScheduling.dayOfMonth || 1)));
     safe.reportScheduling.recipients = String(safe.reportScheduling.recipients || "").trim();
+
+    safe.maintenance.enabled = !!safe.maintenance.enabled;
+    safe.maintenance.durationMinutes = Math.max(1, Math.min(1440, Number(safe.maintenance.durationMinutes || 30)));
+    safe.maintenance.message = String(safe.maintenance.message || DEFAULT_SETTINGS.maintenance.message).trim();
+    if (safe.maintenance.startTime) {
+        const startTime = new Date(safe.maintenance.startTime);
+        safe.maintenance.startTime = startTime instanceof Date && !isNaN(startTime) ? startTime.toISOString() : null;
+    }
 
     return safe;
 }
@@ -263,6 +282,17 @@ exports.updateSystemSettings = async(req, res) => {
             `, ["reportScheduling", JSON.stringify(payload.reportScheduling), userId]
         );
 
+        await db.query(
+            `
+            INSERT INTO system_settings (setting_key, setting_value, updated_by)
+            VALUES (?, CAST(? AS JSON), ?)
+            ON DUPLICATE KEY UPDATE
+                setting_value = VALUES(setting_value),
+                updated_by = VALUES(updated_by),
+                updated_at = CURRENT_TIMESTAMP
+            `, ["maintenance", JSON.stringify(payload.maintenance), userId]
+        );
+
         await logAuditEvent({
             req,
             actionType: "settings",
@@ -270,7 +300,7 @@ exports.updateSystemSettings = async(req, res) => {
             entityType: "system_settings",
             entityId: "global",
             details: {
-                sections: ["emailTemplates", "notificationPreferences", "thresholds", "appearance", "securityPolicies", "reportScheduling"],
+                sections: ["emailTemplates", "notificationPreferences", "thresholds", "appearance", "securityPolicies", "reportScheduling", "maintenance"],
             },
         });
 
@@ -310,5 +340,130 @@ exports.getAuditLogs = async(req, res) => {
         });
     } catch (err) {
         res.status(500).json({ message: "Failed to load audit logs", details: err.message });
+    }
+};
+
+exports.getMaintenanceStatus = async(req, res) => {
+    try {
+        await ensureSettingsTable();
+        const [rows] = await db.query(
+            "SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1",
+            ["maintenance"]
+        );
+
+        const defaultSettings = {
+            enabled: false,
+            startTime: null,
+            durationMinutes: 30,
+            message: "The mobile app is currently under maintenance. Please try again later.",
+        };
+
+        if (!rows.length) {
+            return res.json(defaultSettings);
+        }
+
+        const rawValue = rows[0].setting_value;
+        if (typeof rawValue === "object") {
+            return res.json({ ...defaultSettings, ...rawValue });
+        }
+
+        try {
+            const parsed = JSON.parse(rawValue);
+            return res.json({ ...defaultSettings, ...parsed });
+        } catch (_) {
+            return res.json(defaultSettings);
+        }
+    } catch (err) {
+        res.status(500).json({ message: "Failed to load maintenance status", details: err.message });
+    }
+};
+
+exports.updateMaintenanceStatus = async(req, res) => {
+    try {
+        const userId = Number((req.user && req.user.id) || 0) || null;
+        const { enabled, durationMinutes, message } = req.body;
+
+        await ensureSettingsTable();
+
+        const maintenance = {
+            enabled: !!enabled,
+            startTime: enabled ? new Date().toISOString() : null,
+            durationMinutes: Math.max(1, Math.min(1440, Number(durationMinutes || 30))),
+            message: String(message || "The mobile app is currently under maintenance. Please try again later.").trim(),
+        };
+
+        await db.query(
+            `
+            INSERT INTO system_settings (setting_key, setting_value, updated_by)
+            VALUES (?, CAST(? AS JSON), ?)
+            ON DUPLICATE KEY UPDATE
+                setting_value = VALUES(setting_value),
+                updated_by = VALUES(updated_by),
+                updated_at = CURRENT_TIMESTAMP
+            `, ["maintenance", JSON.stringify(maintenance), userId]
+        );
+
+        await logAuditEvent({
+            req,
+            actionType: "settings",
+            action: "maintenance_status_updated",
+            entityType: "system_settings",
+            entityId: "maintenance",
+            details: {
+                enabled: maintenance.enabled,
+                durationMinutes: maintenance.durationMinutes,
+            },
+        });
+
+        // Clear cache to reflect changes immediately
+        const { clearMaintenanceCache } = require("../middleware/maintenance.middleware");
+        clearMaintenanceCache();
+
+        res.json({ message: "Maintenance status updated", maintenance });
+    } catch (err) {
+        res.status(500).json({ message: "Failed to update maintenance status", details: err.message });
+    }
+};
+
+exports.disableMaintenance = async(req, res) => {
+    try {
+        const userId = Number((req.user && req.user.id) || 0) || null;
+
+        await ensureSettingsTable();
+
+        const maintenance = {
+            enabled: false,
+            startTime: null,
+            durationMinutes: 30,
+            message: "The mobile app is currently under maintenance. Please try again later.",
+        };
+
+        await db.query(
+            `
+            INSERT INTO system_settings (setting_key, setting_value, updated_by)
+            VALUES (?, CAST(? AS JSON), ?)
+            ON DUPLICATE KEY UPDATE
+                setting_value = VALUES(setting_value),
+                updated_by = VALUES(updated_by),
+                updated_at = CURRENT_TIMESTAMP
+            `, ["maintenance", JSON.stringify(maintenance), userId]
+        );
+
+        await logAuditEvent({
+            req,
+            actionType: "settings",
+            action: "maintenance_disabled",
+            entityType: "system_settings",
+            entityId: "maintenance",
+            details: { disabled: true },
+        });
+
+        // Clear cache
+        const { clearMaintenanceCache } = require("../middleware/maintenance.middleware");
+        clearMaintenanceCache();
+
+        res.json({ message: "Maintenance mode disabled", maintenance });
+    } catch (err) {
+        res.status(500).json({ message: "Failed to disable maintenance", details: err.message });
     }
 };

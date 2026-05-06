@@ -1,6 +1,7 @@
 const nodemailer = require("nodemailer");
 const { logAuditEvent } = require("./audit-log.service");
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 /**
  * Email service for sending benefit application notifications to admin
